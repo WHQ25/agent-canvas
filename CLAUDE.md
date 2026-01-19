@@ -13,7 +13,7 @@ Agent Canvas is a CLI tool that provides an Excalidraw canvas interface for AI a
 
 - **Package Manager**: Bun
 - **Monorepo**: Turborepo
-- **Electron App**: Electron + Vite + React + @excalidraw/excalidraw
+- **Electron App**: Electron + Vite + React + @excalidraw/excalidraw (0.18.0)
 - **CLI**: Commander.js + ws (WebSocket client)
 - **Language**: TypeScript
 
@@ -46,14 +46,56 @@ CLI and Electron app communicate via WebSocket on port **7890**.
 ```
 CLI (ws-client) <--WebSocket:7890--> Electron Main Process (ws-server)
                                             |
-                                            v
+                                            v (IPC)
                                     Renderer (Excalidraw)
 ```
 
 ### Protocol
 
-Messages are defined in `electron-app/src/shared/protocol.ts` and follow a typed message pattern with `type` discriminator.
+Messages are defined in `electron-app/src/shared/protocol.ts` and follow a typed message pattern with `type` discriminator. Each request has an `id` for response matching.
 
-### CLI Commands
+## CLI Commands
 
-- `canvas start` - Launch Electron app (if not running) and establish WebSocket connection
+### Application Control
+- `canvas start` - Launch Electron app and connect
+- `canvas start --file <path>` - Launch and load .excalidraw file
+
+### Drawing Commands
+- `canvas add-shape -t <rectangle|ellipse|diamond> -x <n> -y <n>` - Add shape
+- `canvas add-text -t <text> -x <n> -y <n>` - Add text
+- `canvas add-line -x <n> -y <n> --end-x <n> --end-y <n>` - Add line
+- `canvas add-arrow -x <n> -y <n> --end-x <n> --end-y <n>` - Add arrow
+- `canvas add-polygon -p '<json-points>'` - Add polygon
+
+### Element Manipulation
+- `canvas delete-element -i <id>` - Delete element
+- `canvas rotate-element -i <id> -a <degrees>` - Rotate element
+- `canvas move-elements -i <ids> --delta-x <n> --delta-y <n>` - Move elements
+- `canvas group-elements -i <ids>` - Group elements
+- `canvas ungroup-element -i <id>` - Ungroup element
+
+### Scene Operations
+- `canvas read` - Read scene (TOON format)
+- `canvas read --json` - Read scene (JSON format)
+- `canvas save <filepath>` - Save to .excalidraw file
+- `canvas export -o <path>` - Export to PNG
+
+## Drawing Tips for Agents
+
+When drawing complex diagrams, chain commands with `&&` for efficiency:
+
+```bash
+bun run dev add-shape -t rectangle -x 100 -y 100 -w 200 -h 100 -l "Box 1" && \
+bun run dev add-shape -t rectangle -x 100 -y 250 -w 200 -h 100 -l "Box 2" && \
+bun run dev add-arrow -x 200 -y 200 --end-x 200 --end-y 250
+```
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `electron-app/src/shared/protocol.ts` | WebSocket message types |
+| `electron-app/src/renderer/App.tsx` | Excalidraw component & command handlers |
+| `electron-app/src/main/ws-server.ts` | WebSocket server |
+| `cli/src/index.ts` | CLI commands |
+| `cli/src/lib/ws-client.ts` | WebSocket client |
