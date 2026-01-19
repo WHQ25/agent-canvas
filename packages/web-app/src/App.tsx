@@ -1,0 +1,623 @@
+import { useEffect, useRef, useCallback } from 'react';
+import { Excalidraw, convertToExcalidrawElements, exportToBlob } from '@excalidraw/excalidraw';
+import type {
+  AddShapeParams,
+  AddTextParams,
+  AddLineParams,
+  AddArrowParams,
+  AddPolygonParams,
+  DeleteElementParams,
+  RotateElementParams,
+  GroupElementsParams,
+  UngroupElementParams,
+  MoveElementsParams,
+  LoadSceneParams,
+  ExportImageParams,
+  SceneElement,
+} from './protocol';
+
+const WS_PORT = 7890;
+
+interface ExcalidrawElement {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  groupIds?: string[];
+  angle?: number;
+  isDeleted?: boolean;
+  strokeColor?: string;
+  backgroundColor?: string;
+  text?: string;
+  fontSize?: number;
+  points?: number[][];
+  startArrowhead?: string | null;
+  endArrowhead?: string | null;
+}
+
+interface ExcalidrawAPI {
+  getSceneElements: () => readonly ExcalidrawElement[];
+  getAppState: () => unknown;
+  getFiles: () => unknown;
+  updateScene: (scene: {
+    elements?: readonly unknown[];
+    appState?: unknown;
+    captureUpdate?: 'immediately' | 'eventually' | 'none';
+  }) => void;
+}
+
+export default function App() {
+  const excalidrawAPIRef = useRef<ExcalidrawAPI | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  // Handler functions
+  const handleAddShape = useCallback((id: string, params: AddShapeParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'addShapeResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const shapeSkeleton: any = {
+        type: params.type,
+        x: params.x,
+        y: params.y,
+        strokeColor: params.strokeColor ?? '#1e1e1e',
+        backgroundColor: params.backgroundColor ?? 'transparent',
+        strokeWidth: params.strokeWidth ?? 2,
+        strokeStyle: params.strokeStyle ?? 'solid',
+        fillStyle: params.fillStyle ?? 'hachure',
+      };
+
+      if (params.width !== undefined) shapeSkeleton.width = params.width;
+      if (params.height !== undefined) shapeSkeleton.height = params.height;
+
+      if (params.label) {
+        shapeSkeleton.label = {
+          text: params.label.text.replace(/\\n/g, '\n'),
+          fontSize: params.label.fontSize ?? 20,
+          textAlign: params.label.textAlign ?? 'center',
+          verticalAlign: params.label.verticalAlign ?? 'middle',
+          strokeColor: params.label.strokeColor,
+        };
+      }
+
+      const newElements = convertToExcalidrawElements([shapeSkeleton]);
+      api.updateScene({
+        elements: [...elements, ...newElements],
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'addShapeResult', id, success: true, elementId: newElements[0].id };
+    } catch (error) {
+      return { type: 'addShapeResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleAddText = useCallback((id: string, params: AddTextParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'addTextResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const textSkeleton: any = {
+        type: 'text',
+        text: params.text.replace(/\\n/g, '\n'),
+        x: params.x,
+        y: params.y,
+        fontSize: params.fontSize ?? 20,
+        textAlign: params.textAlign ?? 'left',
+        strokeColor: params.strokeColor ?? '#1e1e1e',
+      };
+
+      const newElements = convertToExcalidrawElements([textSkeleton]);
+      api.updateScene({
+        elements: [...elements, ...newElements],
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'addTextResult', id, success: true, elementId: newElements[0].id };
+    } catch (error) {
+      return { type: 'addTextResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleAddLine = useCallback((id: string, params: AddLineParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'addLineResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lineSkeleton: any = {
+        type: 'line',
+        x: params.x,
+        y: params.y,
+        points: [[0, 0], [params.endX - params.x, params.endY - params.y]],
+        strokeColor: params.strokeColor ?? '#1e1e1e',
+        strokeWidth: params.strokeWidth ?? 2,
+        strokeStyle: params.strokeStyle ?? 'solid',
+      };
+
+      const newElements = convertToExcalidrawElements([lineSkeleton]);
+      api.updateScene({
+        elements: [...elements, ...newElements],
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'addLineResult', id, success: true, elementId: newElements[0].id };
+    } catch (error) {
+      return { type: 'addLineResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleAddArrow = useCallback((id: string, params: AddArrowParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'addArrowResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const arrowSkeleton: any = {
+        type: 'arrow',
+        x: params.x,
+        y: params.y,
+        points: [[0, 0], [params.endX - params.x, params.endY - params.y]],
+        strokeColor: params.strokeColor ?? '#1e1e1e',
+        strokeWidth: params.strokeWidth ?? 2,
+        strokeStyle: params.strokeStyle ?? 'solid',
+        startArrowhead: params.startArrowhead ?? null,
+        endArrowhead: params.endArrowhead ?? 'arrow',
+      };
+
+      const newElements = convertToExcalidrawElements([arrowSkeleton]);
+      api.updateScene({
+        elements: [...elements, ...newElements],
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'addArrowResult', id, success: true, elementId: newElements[0].id };
+    } catch (error) {
+      return { type: 'addArrowResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleAddPolygon = useCallback((id: string, params: AddPolygonParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'addPolygonResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    if (params.points.length < 3) {
+      return { type: 'addPolygonResult', id, success: false, error: 'Polygon requires at least 3 points' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      const firstPoint = params.points[0];
+      const points = params.points.map(p => [p.x - firstPoint.x, p.y - firstPoint.y]);
+      points.push([0, 0]);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const polygonSkeleton: any = {
+        type: 'line',
+        x: firstPoint.x,
+        y: firstPoint.y,
+        points,
+        strokeColor: params.strokeColor ?? '#1e1e1e',
+        backgroundColor: params.backgroundColor ?? 'transparent',
+        strokeWidth: params.strokeWidth ?? 2,
+        strokeStyle: params.strokeStyle ?? 'solid',
+        fillStyle: params.fillStyle ?? 'solid',
+      };
+
+      const newElements = convertToExcalidrawElements([polygonSkeleton]);
+      api.updateScene({
+        elements: [...elements, ...newElements],
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'addPolygonResult', id, success: true, elementId: newElements[0].id };
+    } catch (error) {
+      return { type: 'addPolygonResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleDeleteElement = useCallback((id: string, params: DeleteElementParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'deleteElementResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      const elementToDelete = elements.find(e => e.id === params.elementId);
+
+      if (!elementToDelete) {
+        return { type: 'deleteElementResult', id, success: false, error: 'Element not found' };
+      }
+
+      const updatedElements = elements.map(e =>
+        e.id === params.elementId ? { ...e, isDeleted: true } : e
+      );
+
+      api.updateScene({
+        elements: updatedElements,
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'deleteElementResult', id, success: true };
+    } catch (error) {
+      return { type: 'deleteElementResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleRotateElement = useCallback((id: string, params: RotateElementParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'rotateElementResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      const element = elements.find(e => e.id === params.elementId);
+
+      if (!element) {
+        return { type: 'rotateElementResult', id, success: false, error: 'Element not found' };
+      }
+
+      const angleInRadians = (params.angle * Math.PI) / 180;
+      let rotatedCount = 0;
+
+      const groupId = element.groupIds?.[0];
+      const updatedElements = elements.map(e => {
+        const shouldRotate = groupId
+          ? e.groupIds?.includes(groupId)
+          : e.id === params.elementId;
+
+        if (shouldRotate) {
+          rotatedCount++;
+          return { ...e, angle: (e.angle ?? 0) + angleInRadians };
+        }
+        return e;
+      });
+
+      api.updateScene({
+        elements: updatedElements,
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'rotateElementResult', id, success: true, rotatedCount };
+    } catch (error) {
+      return { type: 'rotateElementResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleGroupElements = useCallback((id: string, params: GroupElementsParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'groupElementsResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    if (params.elementIds.length < 2) {
+      return { type: 'groupElementsResult', id, success: false, error: 'At least 2 elements required for grouping' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      const newGroupId = Math.random().toString(36).substring(2, 15);
+
+      const updatedElements = elements.map(e => {
+        if (params.elementIds.includes(e.id)) {
+          return { ...e, groupIds: [...(e.groupIds ?? []), newGroupId] };
+        }
+        return e;
+      });
+
+      api.updateScene({
+        elements: updatedElements,
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'groupElementsResult', id, success: true, groupId: newGroupId };
+    } catch (error) {
+      return { type: 'groupElementsResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleUngroupElement = useCallback((id: string, params: UngroupElementParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'ungroupElementResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      const element = elements.find(e => e.id === params.elementId);
+
+      if (!element) {
+        return { type: 'ungroupElementResult', id, success: false, error: 'Element not found' };
+      }
+
+      if (!element.groupIds?.length) {
+        return { type: 'ungroupElementResult', id, success: false, error: 'Element is not in any group' };
+      }
+
+      const updatedElements = elements.map(e => {
+        if (e.id === params.elementId) {
+          return { ...e, groupIds: e.groupIds?.slice(0, -1) ?? [] };
+        }
+        return e;
+      });
+
+      api.updateScene({
+        elements: updatedElements,
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'ungroupElementResult', id, success: true };
+    } catch (error) {
+      return { type: 'ungroupElementResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleMoveElements = useCallback((id: string, params: MoveElementsParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'moveElementsResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      let movedCount = 0;
+
+      const updatedElements = elements.map(e => {
+        if (params.elementIds.includes(e.id)) {
+          movedCount++;
+          return {
+            ...e,
+            x: (e.x ?? 0) + params.deltaX,
+            y: (e.y ?? 0) + params.deltaY,
+          };
+        }
+        return e;
+      });
+
+      api.updateScene({
+        elements: updatedElements,
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'moveElementsResult', id, success: true, movedCount };
+    } catch (error) {
+      return { type: 'moveElementsResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleReadScene = useCallback((id: string) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'readSceneResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      const sceneElements: SceneElement[] = elements
+        .filter(e => !e.isDeleted)
+        .map(e => ({
+          id: e.id,
+          type: e.type,
+          x: e.x,
+          y: e.y,
+          width: e.width,
+          height: e.height,
+          angle: e.angle,
+          strokeColor: e.strokeColor,
+          backgroundColor: e.backgroundColor,
+          groupIds: e.groupIds,
+          text: e.text,
+          fontSize: e.fontSize,
+          points: e.points,
+          startArrowhead: e.startArrowhead,
+          endArrowhead: e.endArrowhead,
+        }));
+
+      return { type: 'readSceneResult', id, success: true, elements: sceneElements };
+    } catch (error) {
+      return { type: 'readSceneResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleLoadScene = useCallback((id: string, params: LoadSceneParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'loadSceneResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = params.elements || [];
+      api.updateScene({
+        elements: elements as readonly unknown[],
+        captureUpdate: 'immediately',
+      });
+
+      return { type: 'loadSceneResult', id, success: true, elementCount: elements.length };
+    } catch (error) {
+      return { type: 'loadSceneResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleSaveScene = useCallback((id: string) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'saveSceneResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements().filter(e => !e.isDeleted);
+      const appState = api.getAppState();
+      const files = api.getFiles();
+
+      return {
+        type: 'saveSceneResult',
+        id,
+        success: true,
+        data: {
+          type: 'excalidraw',
+          version: 2,
+          source: 'agent-canvas',
+          elements: elements as unknown[],
+          appState,
+          files,
+        },
+      };
+    } catch (error) {
+      return { type: 'saveSceneResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleExportImage = useCallback(async (id: string, params?: ExportImageParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'exportImageResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      const elements = api.getSceneElements().filter(e => !e.isDeleted);
+
+      if (elements.length === 0) {
+        return { type: 'exportImageResult', id, success: false, error: 'Canvas is empty' };
+      }
+
+      const scale = params?.scale ?? 1;
+      const dark = params?.dark ?? false;
+
+      const blob = await exportToBlob({
+        elements: elements as never,
+        files: null,
+        appState: {
+          exportBackground: params?.background ?? true,
+          exportEmbedScene: params?.embedScene ?? false,
+          exportWithDarkMode: dark,
+        },
+        getDimensions: (width: number, height: number) => ({
+          width: width * scale,
+          height: height * scale,
+          scale,
+        }),
+      });
+
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      return { type: 'exportImageResult', id, success: true, dataUrl };
+    } catch (error) {
+      return { type: 'exportImageResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  // Process incoming commands
+  const processCommand = useCallback(async (command: { type: string; id: string; params?: unknown }) => {
+    switch (command.type) {
+      case 'addShape':
+        return handleAddShape(command.id, command.params as AddShapeParams);
+      case 'addText':
+        return handleAddText(command.id, command.params as AddTextParams);
+      case 'addLine':
+        return handleAddLine(command.id, command.params as AddLineParams);
+      case 'addArrow':
+        return handleAddArrow(command.id, command.params as AddArrowParams);
+      case 'addPolygon':
+        return handleAddPolygon(command.id, command.params as AddPolygonParams);
+      case 'deleteElement':
+        return handleDeleteElement(command.id, command.params as DeleteElementParams);
+      case 'rotateElement':
+        return handleRotateElement(command.id, command.params as RotateElementParams);
+      case 'groupElements':
+        return handleGroupElements(command.id, command.params as GroupElementsParams);
+      case 'ungroupElement':
+        return handleUngroupElement(command.id, command.params as UngroupElementParams);
+      case 'moveElements':
+        return handleMoveElements(command.id, command.params as MoveElementsParams);
+      case 'readScene':
+        return handleReadScene(command.id);
+      case 'loadScene':
+        return handleLoadScene(command.id, command.params as LoadSceneParams);
+      case 'saveScene':
+        return handleSaveScene(command.id);
+      case 'exportImage':
+        return await handleExportImage(command.id, command.params as ExportImageParams);
+      default:
+        return { type: 'error', id: command.id, success: false, error: `Unknown command: ${command.type}` };
+    }
+  }, [
+    handleAddShape, handleAddText, handleAddLine, handleAddArrow, handleAddPolygon,
+    handleDeleteElement, handleRotateElement, handleGroupElements, handleUngroupElement,
+    handleMoveElements, handleReadScene, handleLoadScene, handleSaveScene, handleExportImage,
+  ]);
+
+  // WebSocket connection
+  useEffect(() => {
+    const connect = () => {
+      const ws = new WebSocket(`ws://localhost:${WS_PORT}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('Connected to server');
+        // Send browser identification
+        ws.send(JSON.stringify({ type: 'browserConnect' }));
+      };
+
+      ws.onmessage = async (event) => {
+        try {
+          const command = JSON.parse(event.data);
+          if (command.type && command.id) {
+            const result = await processCommand(command);
+            ws.send(JSON.stringify(result));
+          }
+        } catch (error) {
+          console.error('Error processing command:', error);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('Disconnected from server, reconnecting...');
+        wsRef.current = null;
+        setTimeout(connect, 1000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [processCommand]);
+
+  return (
+    <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+      <Excalidraw excalidrawAPI={(api) => { excalidrawAPIRef.current = api as unknown as ExcalidrawAPI; }} />
+    </div>
+  );
+}

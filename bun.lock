@@ -45,11 +45,29 @@
         "vite-plugin-electron-renderer": "^0.14.6",
       },
     },
+    "packages/web-app": {
+      "name": "@agent-canvas/web-app",
+      "version": "0.1.0",
+      "dependencies": {
+        "@excalidraw/excalidraw": "^0.18.0",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+      },
+      "devDependencies": {
+        "@types/react": "^18.3.3",
+        "@types/react-dom": "^18.3.0",
+        "@vitejs/plugin-react": "^4.3.1",
+        "typescript": "^5.5.3",
+        "vite": "^6.0.0",
+      },
+    },
   },
   "packages": {
     "@agent-canvas/cli": ["@agent-canvas/cli@workspace:packages/cli"],
 
     "@agent-canvas/electron-app": ["@agent-canvas/electron-app@workspace:packages/electron-app"],
+
+    "@agent-canvas/web-app": ["@agent-canvas/web-app@workspace:packages/web-app"],
 
     "@babel/code-frame": ["@babel/code-frame@7.28.6", "https://registry.npmmirror.com/@babel/code-frame/-/code-frame-7.28.6.tgz", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-JYgintcMjRiCvS8mMECzaEn+m3PfoQiyqukOMCCVQtoJGYJw8j/8LBJEiqkHLkfwCcs74E3pbAUFNg7d9VNJ+Q=="],
 

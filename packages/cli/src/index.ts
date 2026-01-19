@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { writeFileSync } from 'node:fs';
 import { encode as toToon } from '@toon-format/toon';
-import { start } from './commands/start';
+import { startBrowser, startApp } from './commands/start';
 import { connectToCanvas, generateId } from './lib/ws-client';
 import type {
   AddShapeParams, AddShapeResponse,
@@ -28,10 +28,15 @@ program
 
 program
   .command('start')
-  .description('Start the canvas app and establish connection')
+  .description('Start the canvas (browser mode by default, use --app for Electron)')
   .option('-f, --file <path>', 'Load an .excalidraw file on start')
+  .option('--app', 'Use Electron app instead of browser')
   .action(async (options) => {
-    await start(options.file);
+    if (options.app) {
+      await startApp(options.file);
+    } else {
+      await startBrowser(options.file);
+    }
   });
 
 // ============================================================================
