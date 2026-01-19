@@ -1,7 +1,9 @@
 import { spawn } from 'child_process';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { connectToCanvas, isCanvasRunning } from '../lib/ws-client';
+import { readFileSync, existsSync } from 'fs';
+import { connectToCanvas, isCanvasRunning, generateId } from '../lib/ws-client';
+import type { LoadSceneResponse } from '../lib/protocol';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -36,7 +38,16 @@ async function launchElectronApp(): Promise<void> {
   throw new Error('Failed to start electron app');
 }
 
-export async function start(): Promise<void> {
+export async function start(filePath?: string): Promise<void> {
+  // Validate file path if provided
+  if (filePath) {
+    const absolutePath = resolve(filePath);
+    if (!existsSync(absolutePath)) {
+      console.error(`File not found: ${absolutePath}`);
+      process.exit(1);
+    }
+  }
+
   console.log('Checking if canvas app is running...');
 
   const running = await isCanvasRunning();
@@ -52,8 +63,37 @@ export async function start(): Promise<void> {
     const client = await connectToCanvas();
     console.log('Connected to canvas app');
 
-    // Keep the connection alive
-    // For MVP, we just verify connection works and exit
+    // Load file if specified
+    if (filePath) {
+      const absolutePath = resolve(filePath);
+      console.log(`Loading file: ${absolutePath}`);
+
+      try {
+        const content = readFileSync(absolutePath, 'utf-8');
+        const data = JSON.parse(content);
+
+        const result = await client.send<LoadSceneResponse>({
+          type: 'loadScene',
+          id: generateId(),
+          params: {
+            elements: data.elements || [],
+            appState: data.appState,
+            files: data.files,
+          },
+        });
+
+        if (result.success) {
+          console.log(`Loaded ${result.elementCount} elements from ${filePath}`);
+        } else {
+          console.error(`Failed to load file: ${result.error}`);
+          process.exit(1);
+        }
+      } catch (err) {
+        console.error(`Failed to parse file: ${err instanceof Error ? err.message : err}`);
+        process.exit(1);
+      }
+    }
+
     client.close();
   } catch (err) {
     console.error('Failed to connect:', err instanceof Error ? err.message : err);

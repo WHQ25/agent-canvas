@@ -1,14 +1,27 @@
 import WebSocket from 'ws';
+import { WS_PORT } from './protocol';
 
-const WS_PORT = 7890;
 const WS_URL = `ws://localhost:${WS_PORT}`;
+
+// Pending requests waiting for response
+const pendingRequests = new Map<string, {
+  resolve: (value: unknown) => void;
+  reject: (error: Error) => void;
+}>();
 
 export interface WsClient {
   ws: WebSocket;
   close: () => void;
+  send: <T>(request: { type: string; id: string; params?: unknown }) => Promise<T>;
 }
 
+let clientInstance: WsClient | null = null;
+
 export function connectToCanvas(timeout = 5000): Promise<WsClient> {
+  if (clientInstance && clientInstance.ws.readyState === WebSocket.OPEN) {
+    return Promise.resolve(clientInstance);
+  }
+
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(WS_URL);
     const timer = setTimeout(() => {
@@ -25,11 +38,31 @@ export function connectToCanvas(timeout = 5000): Promise<WsClient> {
     ws.on('message', (data: Buffer) => {
       try {
         const message = JSON.parse(data.toString());
-        if (message.type === 'pong') {
-          resolve({
+
+        // Handle pong for connection verification
+        if (message.type === 'pong' && !clientInstance) {
+          clientInstance = {
             ws,
-            close: () => ws.close(),
-          });
+            close: () => {
+              ws.close();
+              clientInstance = null;
+            },
+            send: <T>(request: { type: string; id: string; params?: unknown }): Promise<T> => {
+              return new Promise((res, rej) => {
+                pendingRequests.set(request.id, { resolve: res as (value: unknown) => void, reject: rej });
+                ws.send(JSON.stringify(request));
+              });
+            },
+          };
+          resolve(clientInstance);
+          return;
+        }
+
+        // Handle responses for pending requests
+        if (message.id && pendingRequests.has(message.id)) {
+          const pending = pendingRequests.get(message.id)!;
+          pendingRequests.delete(message.id);
+          pending.resolve(message);
         }
       } catch {
         // Ignore parse errors
@@ -39,6 +72,15 @@ export function connectToCanvas(timeout = 5000): Promise<WsClient> {
     ws.on('error', (err) => {
       clearTimeout(timer);
       reject(err);
+    });
+
+    ws.on('close', () => {
+      clientInstance = null;
+      // Reject all pending requests
+      for (const [id, pending] of pendingRequests) {
+        pending.reject(new Error('Connection closed'));
+        pendingRequests.delete(id);
+      }
     });
   });
 }
@@ -62,4 +104,8 @@ export function isCanvasRunning(): Promise<boolean> {
       resolve(false);
     });
   });
+}
+
+export function generateId(): string {
+  return Math.random().toString(36).substring(2, 15);
 }
