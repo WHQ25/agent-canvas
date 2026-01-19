@@ -13,12 +13,24 @@ A CLI tool that provides an Excalidraw canvas interface for AI agents.
 - PNG export with scale, dark mode, and embed scene options
 - Chinese handwriting font (Xiaolai) support
 
-## Requirements
+## Installation
+
+```bash
+# Install CLI (browser mode)
+npm install -g @agent-canvas/cli
+
+# Optional: Install Electron app for desktop mode
+npm install -g @agent-canvas/electron-app
+```
+
+## Development
+
+### Requirements
 
 - [Bun](https://bun.sh/) >= 1.0
-- Node.js >= 18 (for Electron)
+- Node.js >= 18
 
-## Installation
+### Setup
 
 ```bash
 # Install dependencies
@@ -28,7 +40,7 @@ bun install
 bun run build
 ```
 
-## Development
+### Run in Dev Mode
 
 ```bash
 # Start all packages in dev mode
