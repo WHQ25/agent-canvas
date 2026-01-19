@@ -15,6 +15,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout
@@ -28,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
@@ -40,16 +43,12 @@ jobs:
       - name: Publish CLI
         if: ${{ github.event.inputs.dry_run != 'true' }}
         working-directory: packages/cli
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
 
       - name: Publish Electron App
         if: ${{ github.event.inputs.dry_run != 'true' }}
         working-directory: packages/electron-app
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
 
       - name: Dry run - CLI
         if: ${{ github.event.inputs.dry_run == 'true' }}
