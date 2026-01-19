@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Agent Canvas is a CLI tool that provides an Excalidraw canvas interface for AI agents. It consists of two packages in a Turborepo monorepo:
+Agent Canvas is a CLI tool that provides an Excalidraw canvas interface for AI agents. It consists of three packages in a Turborepo monorepo:
 
-- **electron-app**: Electron desktop application embedding Excalidraw with a WebSocket server
-- **cli**: Command-line interface for controlling the canvas
+- **web-app**: Browser frontend with Excalidraw (for browser mode)
+- **electron-app**: Electron desktop application embedding Excalidraw (for `--app` mode)
+- **cli**: Command-line interface with built-in HTTP/WebSocket server for browser mode
 
 ## Tech Stack
 
@@ -39,7 +40,21 @@ bun run typecheck
 
 ## Architecture
 
-### Communication
+### Browser Mode (default)
+
+CLI commands → WebSocket → CLI Server → WebSocket → Browser (Excalidraw)
+
+```
+CLI (ws-client) <--WebSocket:7890--> CLI Server (relay) <--WebSocket:7890--> Browser
+                                           |
+                                    HTTP:7891 (static files)
+```
+
+- HTTP server serves web-app static files on port **7891**
+- WebSocket server relays messages on port **7890**
+- Browser connects as WebSocket client, identified by `browserConnect` message
+
+### Electron Mode (`--app`)
 
 CLI and Electron app communicate via WebSocket on port **7890**.
 
@@ -57,8 +72,9 @@ Messages are defined in `electron-app/src/shared/protocol.ts` and follow a typed
 ## CLI Commands
 
 ### Application Control
-- `canvas start` - Launch Electron app and connect
-- `canvas start --file <path>` - Launch and load .excalidraw file
+- `canvas start` - Start in browser mode (default)
+- `canvas start --app` - Start in Electron mode
+- `canvas start -f <path>` - Load .excalidraw file on start
 
 ### Drawing Commands
 - `canvas add-shape -t <rectangle|ellipse|diamond> -x <n> -y <n>` - Add shape
@@ -94,8 +110,11 @@ bun run dev add-arrow -x 200 -y 200 --end-x 200 --end-y 250
 
 | File | Purpose |
 |------|---------|
-| `electron-app/src/shared/protocol.ts` | WebSocket message types |
-| `electron-app/src/renderer/App.tsx` | Excalidraw component & command handlers |
-| `electron-app/src/main/ws-server.ts` | WebSocket server |
 | `cli/src/index.ts` | CLI commands |
+| `cli/src/server/index.ts` | HTTP + WebSocket server (browser mode) |
+| `cli/src/commands/start.ts` | Start command (browser/Electron mode) |
 | `cli/src/lib/ws-client.ts` | WebSocket client |
+| `web-app/src/App.tsx` | Browser mode Excalidraw + WebSocket |
+| `electron-app/src/shared/protocol.ts` | WebSocket message types |
+| `electron-app/src/renderer/App.tsx` | Electron mode Excalidraw + IPC |
+| `electron-app/src/main/ws-server.ts` | Electron WebSocket server |

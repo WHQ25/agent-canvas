@@ -4,7 +4,8 @@ A CLI tool that provides an Excalidraw canvas interface for AI agents.
 
 ## Features
 
-- Electron-based desktop app with embedded Excalidraw
+- **Browser mode** (default): Opens Excalidraw in your browser - no extra installation required
+- **Electron mode** (optional): Desktop app with `--app` flag
 - CLI for AI agents to interact with the canvas via WebSocket
 - Full drawing capabilities: shapes, text, lines, arrows, polygons
 - Element manipulation: move, rotate, group, delete
@@ -43,11 +44,13 @@ cd packages/cli && bun run dev start
 ### Start Canvas
 
 ```bash
-# Start empty canvas
+# Browser mode (default) - opens in your browser
 canvas start
+canvas start -f diagram.excalidraw
 
-# Start and load existing file
-canvas start --file diagram.excalidraw
+# Electron mode - opens desktop app
+canvas start --app
+canvas start --app -f diagram.excalidraw
 ```
 
 ### Drawing
@@ -108,7 +111,9 @@ canvas export -o output.png --scale 2 --dark --no-background
 ```
 agent-canvas/
 ├── packages/
-│   ├── electron-app/    # Electron + Excalidraw desktop app
+│   ├── web-app/         # Browser mode frontend
+│   │   └── src/         # React + Excalidraw + WebSocket client
+│   ├── electron-app/    # Electron mode desktop app
 │   │   ├── src/
 │   │   │   ├── main/    # Electron main process + WebSocket server
 │   │   │   ├── renderer/# React + Excalidraw
@@ -117,6 +122,7 @@ agent-canvas/
 │   └── cli/             # Command-line interface
 │       └── src/
 │           ├── commands/# CLI commands
+│           ├── server/  # HTTP + WebSocket server (browser mode)
 │           └── lib/     # WebSocket client
 ├── turbo.json           # Turborepo configuration
 └── package.json         # Root package.json
