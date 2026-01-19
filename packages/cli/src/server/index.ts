@@ -29,20 +29,23 @@ let browserClient: WebSocket | null = null;
 const pendingRequests = new Map<string, WebSocket>();
 
 function getStaticDir(): string {
-  // Try to find web-app dist directory
+  // Try to find static files
   const possiblePaths = [
-    join(__dirname, '../../../web-app/dist'),  // From cli/src/server -> web-app/dist
-    join(__dirname, '../../../../web-app/dist'), // Alternative path
+    // Production: bundled in cli package
+    join(__dirname, '../static'),           // From dist/server -> dist/static
+    join(__dirname, '../../static'),        // Alternative
+    // Development: from web-app package
+    join(__dirname, '../../../web-app/dist'),
+    join(__dirname, '../../../../packages/web-app/dist'),
   ];
 
   for (const p of possiblePaths) {
-    if (existsSync(p)) {
+    if (existsSync(join(p, 'index.html'))) {
       return p;
     }
   }
 
-  // Fallback to web-app root for dev mode
-  return join(__dirname, '../../../web-app');
+  throw new Error('Static files not found. Please run "bun run build" first.');
 }
 
 export function startServer(): Promise<{ httpUrl: string; wsPort: number; close: () => void }> {
