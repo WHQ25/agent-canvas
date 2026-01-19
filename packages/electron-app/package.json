@@ -1,6 +1,6 @@
 {
   "name": "@agent-canvas/electron-app",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Electron desktop app for Agent Canvas - Excalidraw interface for AI agents",
   "license": "MIT",
   "repository": {
@@ -8,7 +8,14 @@
     "url": "https://github.com/WHQ25/agent-canvas.git",
     "directory": "packages/electron-app"
   },
-  "keywords": ["excalidraw", "canvas", "ai", "agent", "electron", "desktop"],
+  "keywords": [
+    "excalidraw",
+    "canvas",
+    "ai",
+    "agent",
+    "electron",
+    "desktop"
+  ],
   "type": "module",
   "main": "dist/main/index.js",
   "bin": {
