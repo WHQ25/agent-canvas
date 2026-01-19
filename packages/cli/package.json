@@ -1,0 +1,22 @@
+{
+  "name": "@agent-canvas/cli",
+  "version": "0.1.0",
+  "bin": {
+    "canvas": "./bin/canvas.js"
+  },
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^13.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.14",
+    "typescript": "^5.7.3"
+  }
+}
