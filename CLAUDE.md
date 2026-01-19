@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Agent Canvas is a CLI tool that provides an Excalidraw canvas interface for AI agents. It consists of three packages in a Turborepo monorepo:
+Agent Canvas is an AI agent skill + CLI tool that provides an Excalidraw canvas interface for AI agents. It consists of:
 
-- **web-app**: Browser frontend with Excalidraw (for browser mode)
-- **electron-app**: Electron desktop application embedding Excalidraw (for `--app` mode)
-- **cli**: Command-line interface with built-in HTTP/WebSocket server for browser mode
+- **skills/agent-canvas/**: Agent skill (teaches AI agents how to use the CLI)
+- **packages/**: NPM packages in a Turborepo monorepo
+  - **web-app**: Browser frontend with Excalidraw (for browser mode)
+  - **electron-app**: Electron desktop application embedding Excalidraw (for `--app` mode)
+  - **cli**: Command-line interface with built-in HTTP/WebSocket server for browser mode
 
 ## Tech Stack
 
@@ -118,3 +120,27 @@ bun run dev add-arrow -x 200 -y 200 --end-x 200 --end-y 250
 | `electron-app/src/shared/protocol.ts` | WebSocket message types |
 | `electron-app/src/renderer/App.tsx` | Electron mode Excalidraw + IPC |
 | `electron-app/src/main/ws-server.ts` | Electron WebSocket server |
+| `skills/agent-canvas/SKILL.md` | Agent skill - CLI command reference |
+| `skills/agent-canvas/references/` | Drawing tutorials for diagram types |
+
+## Agent Skill Structure
+
+```
+skills/agent-canvas/
+├── SKILL.md              # CLI command reference (main skill file)
+└── references/
+    ├── REFERENCE.md      # Tutorial index
+    ├── flowchart.md      # Flowchart tutorial
+    ├── architecture.md   # Architecture diagram tutorial
+    ├── mindmap.md        # Mind map tutorial
+    └── ui-mockup.md      # UI mockup tutorial
+```
+
+## Version Bump Checklist
+
+When releasing a new version, update these files:
+
+1. `packages/cli/package.json` - version field
+2. `packages/cli/src/index.ts` - `.version('x.x.x')` (hardcoded)
+3. `packages/electron-app/package.json` - version field
+4. `skills/agent-canvas/SKILL.md` - metadata version field
