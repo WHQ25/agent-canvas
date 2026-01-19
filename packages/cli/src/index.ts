@@ -24,7 +24,7 @@ const program = new Command();
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.1.0');
+  .version('0.1.2');
 
 program
   .command('start')
