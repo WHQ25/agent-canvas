@@ -3,9 +3,9 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
 import { promisify } from 'util';
-import { connectToCanvas, isCanvasRunning, generateId } from '../lib/ws-client';
-import { startServer, isBrowserServerRunning } from '../server';
-import type { LoadSceneResponse } from '../lib/protocol';
+import { connectToCanvas, isCanvasRunning, generateId } from '../lib/ws-client.js';
+import { startServer, isBrowserServerRunning } from '../server/index.js';
+import type { LoadSceneResponse } from '../lib/protocol.js';
 
 const execAsync = promisify(exec);
 const __dirname = dirname(fileURLToPath(import.meta.url));

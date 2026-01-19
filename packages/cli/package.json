@@ -1,6 +1,6 @@
 {
   "name": "@agent-canvas/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI tool for Agent Canvas - Excalidraw interface for AI agents",
   "license": "MIT",
   "repository": {
@@ -8,7 +8,14 @@
     "url": "https://github.com/WHQ25/agent-canvas.git",
     "directory": "packages/cli"
   },
-  "keywords": ["excalidraw", "canvas", "ai", "agent", "cli", "drawing"],
+  "keywords": [
+    "excalidraw",
+    "canvas",
+    "ai",
+    "agent",
+    "cli",
+    "drawing"
+  ],
   "bin": {
     "agent-canvas": "./bin/agent-canvas.js"
   },

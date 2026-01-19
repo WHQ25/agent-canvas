@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { WS_PORT } from './protocol';
+import { WS_PORT } from './protocol.js';
 
 const WS_URL = `ws://localhost:${WS_PORT}`;
 

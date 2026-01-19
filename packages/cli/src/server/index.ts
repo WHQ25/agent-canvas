@@ -4,7 +4,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join, extname } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { WS_PORT } from '../lib/protocol';
+import { WS_PORT } from '../lib/protocol.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

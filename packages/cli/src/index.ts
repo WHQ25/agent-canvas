@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { writeFileSync } from 'node:fs';
 import { encode as toToon } from '@toon-format/toon';
-import { startBrowser, startApp } from './commands/start';
-import { connectToCanvas, generateId } from './lib/ws-client';
+import { startBrowser, startApp } from './commands/start.js';
+import { connectToCanvas, generateId } from './lib/ws-client.js';
 import type {
   AddShapeParams, AddShapeResponse,
   AddTextResponse,
@@ -17,7 +17,7 @@ import type {
   ReadSceneResponse,
   SaveSceneResponse,
   ExportImageResponse,
-} from './lib/protocol';
+} from './lib/protocol.js';
 
 const program = new Command();
 
