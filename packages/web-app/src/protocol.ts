@@ -179,43 +179,44 @@ export interface AddPolygonResponse {
 }
 
 // ============================================================================
-// Delete Element
+// Delete Elements
 // ============================================================================
 
-export interface DeleteElementParams {
-  elementId: string;
+export interface DeleteElementsParams {
+  elementIds: string[];
 }
 
-export interface DeleteElementRequest {
-  type: 'deleteElement';
+export interface DeleteElementsRequest {
+  type: 'deleteElements';
   id: string;
-  params: DeleteElementParams;
+  params: DeleteElementsParams;
 }
 
-export interface DeleteElementResponse {
-  type: 'deleteElementResult';
+export interface DeleteElementsResponse {
+  type: 'deleteElementsResult';
   id: string;
   success: boolean;
+  deletedCount?: number;
   error?: string;
 }
 
 // ============================================================================
-// Rotate Element
+// Rotate Elements
 // ============================================================================
 
-export interface RotateElementParams {
-  elementId: string;
+export interface RotateElementsParams {
+  elementIds: string[];
   angle: number; // Degrees, positive = clockwise
 }
 
-export interface RotateElementRequest {
-  type: 'rotateElement';
+export interface RotateElementsRequest {
+  type: 'rotateElements';
   id: string;
-  params: RotateElementParams;
+  params: RotateElementsParams;
 }
 
-export interface RotateElementResponse {
-  type: 'rotateElementResult';
+export interface RotateElementsResponse {
+  type: 'rotateElementsResult';
   id: string;
   success: boolean;
   rotatedCount?: number;
@@ -410,8 +411,8 @@ export type RequestMessage =
   | AddLineRequest
   | AddArrowRequest
   | AddPolygonRequest
-  | DeleteElementRequest
-  | RotateElementRequest
+  | DeleteElementsRequest
+  | RotateElementsRequest
   | GroupElementsRequest
   | UngroupElementRequest
   | MoveElementsRequest
@@ -427,8 +428,8 @@ export type ResponseMessage =
   | AddLineResponse
   | AddArrowResponse
   | AddPolygonResponse
-  | DeleteElementResponse
-  | RotateElementResponse
+  | DeleteElementsResponse
+  | RotateElementsResponse
   | GroupElementsResponse
   | UngroupElementResponse
   | MoveElementsResponse
@@ -446,8 +447,8 @@ const MESSAGE_TYPES = [
   'addLine', 'addLineResult',
   'addArrow', 'addArrowResult',
   'addPolygon', 'addPolygonResult',
-  'deleteElement', 'deleteElementResult',
-  'rotateElement', 'rotateElementResult',
+  'deleteElements', 'deleteElementsResult',
+  'rotateElements', 'rotateElementsResult',
   'groupElements', 'groupElementsResult',
   'ungroupElement', 'ungroupElementResult',
   'moveElements', 'moveElementsResult',

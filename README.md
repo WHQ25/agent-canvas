@@ -75,11 +75,11 @@ canvas add-polygon -p '[{"x":0,"y":0},{"x":100,"y":0},{"x":50,"y":100}]'
 ### Element Manipulation
 
 ```bash
-# Delete element
-canvas delete-element -i <element-id>
+# Delete elements (supports batch)
+canvas delete-elements -i <id1>,<id2>,<id3>
 
-# Rotate element (degrees, positive = clockwise)
-canvas rotate-element -i <element-id> -a 45
+# Rotate elements (degrees, positive = clockwise, supports batch)
+canvas rotate-elements -i <id1>,<id2> -a 45
 
 # Move elements
 canvas move-elements -i <id1>,<id2> --delta-x 50 --delta-y 100

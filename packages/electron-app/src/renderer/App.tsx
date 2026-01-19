@@ -6,8 +6,8 @@ import type {
   AddLineRequest, AddLineResponse, AddLineParams,
   AddArrowRequest, AddArrowResponse, AddArrowParams,
   AddPolygonRequest, AddPolygonResponse, AddPolygonParams,
-  DeleteElementRequest, DeleteElementResponse, DeleteElementParams,
-  RotateElementRequest, RotateElementResponse, RotateElementParams,
+  DeleteElementsRequest, DeleteElementsResponse, DeleteElementsParams,
+  RotateElementsRequest, RotateElementsResponse, RotateElementsParams,
   GroupElementsRequest, GroupElementsResponse, GroupElementsParams,
   UngroupElementRequest, UngroupElementResponse, UngroupElementParams,
   MoveElementsRequest, MoveElementsResponse, MoveElementsParams,
@@ -261,64 +261,68 @@ export default function App() {
   };
 
   // ============================================================================
-  // Delete Element
+  // Delete Elements
   // ============================================================================
-  const handleDeleteElement = (id: string, params: DeleteElementParams): DeleteElementResponse => {
+  const handleDeleteElements = (id: string, params: DeleteElementsParams): DeleteElementsResponse => {
     const api = excalidrawAPIRef.current;
     if (!api) {
-      return { type: 'deleteElementResult', id, success: false, error: 'Canvas not ready' };
+      return { type: 'deleteElementsResult', id, success: false, error: 'Canvas not ready' };
     }
 
     try {
       const elements = api.getSceneElements();
-      const elementToDelete = elements.find(e => e.id === params.elementId);
+      const idsToDelete = new Set(params.elementIds);
+      let deletedCount = 0;
 
-      if (!elementToDelete) {
-        return { type: 'deleteElementResult', id, success: false, error: 'Element not found' };
+      const updatedElements = elements.map(e => {
+        if (idsToDelete.has(e.id)) {
+          deletedCount++;
+          return { ...e, isDeleted: true };
+        }
+        return e;
+      });
+
+      if (deletedCount === 0) {
+        return { type: 'deleteElementsResult', id, success: false, error: 'No elements found' };
       }
-
-      // Mark element as deleted
-      const updatedElements = elements.map(e =>
-        e.id === params.elementId ? { ...e, isDeleted: true } : e
-      );
 
       api.updateScene({
         elements: updatedElements,
         captureUpdate: 'immediately',
       });
 
-      return { type: 'deleteElementResult', id, success: true };
+      return { type: 'deleteElementsResult', id, success: true, deletedCount };
     } catch (error) {
-      return { type: 'deleteElementResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return { type: 'deleteElementsResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   };
 
   // ============================================================================
-  // Rotate Element
+  // Rotate Elements
   // ============================================================================
-  const handleRotateElement = (id: string, params: RotateElementParams): RotateElementResponse => {
+  const handleRotateElements = (id: string, params: RotateElementsParams): RotateElementsResponse => {
     const api = excalidrawAPIRef.current;
     if (!api) {
-      return { type: 'rotateElementResult', id, success: false, error: 'Canvas not ready' };
+      return { type: 'rotateElementsResult', id, success: false, error: 'Canvas not ready' };
     }
 
     try {
       const elements = api.getSceneElements();
-      const element = elements.find(e => e.id === params.elementId);
-
-      if (!element) {
-        return { type: 'rotateElementResult', id, success: false, error: 'Element not found' };
-      }
-
+      const idsToRotate = new Set(params.elementIds);
       const angleInRadians = (params.angle * Math.PI) / 180;
       let rotatedCount = 0;
 
-      // If element is in a group, rotate all elements in that group
-      const groupId = element.groupIds?.[0];
+      // Collect all group IDs from the target elements
+      const groupIds = new Set<string>();
+      elements.forEach(e => {
+        if (idsToRotate.has(e.id) && e.groupIds?.length) {
+          e.groupIds.forEach(gid => groupIds.add(gid));
+        }
+      });
+
       const updatedElements = elements.map(e => {
-        const shouldRotate = groupId
-          ? e.groupIds?.includes(groupId)
-          : e.id === params.elementId;
+        const shouldRotate = idsToRotate.has(e.id) ||
+          (groupIds.size > 0 && e.groupIds?.some(gid => groupIds.has(gid)));
 
         if (shouldRotate) {
           rotatedCount++;
@@ -327,14 +331,18 @@ export default function App() {
         return e;
       });
 
+      if (rotatedCount === 0) {
+        return { type: 'rotateElementsResult', id, success: false, error: 'No elements found' };
+      }
+
       api.updateScene({
         elements: updatedElements,
         captureUpdate: 'immediately',
       });
 
-      return { type: 'rotateElementResult', id, success: true, rotatedCount };
+      return { type: 'rotateElementsResult', id, success: true, rotatedCount };
     } catch (error) {
-      return { type: 'rotateElementResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return { type: 'rotateElementsResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   };
 
@@ -617,11 +625,11 @@ export default function App() {
         case 'addPolygon':
           result = handleAddPolygon(msg.id, (command as AddPolygonRequest).params);
           break;
-        case 'deleteElement':
-          result = handleDeleteElement(msg.id, (command as DeleteElementRequest).params);
+        case 'deleteElements':
+          result = handleDeleteElements(msg.id, (command as DeleteElementsRequest).params);
           break;
-        case 'rotateElement':
-          result = handleRotateElement(msg.id, (command as RotateElementRequest).params);
+        case 'rotateElements':
+          result = handleRotateElements(msg.id, (command as RotateElementsRequest).params);
           break;
         case 'groupElements':
           result = handleGroupElements(msg.id, (command as GroupElementsRequest).params);

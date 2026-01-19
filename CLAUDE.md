@@ -84,8 +84,8 @@ Messages are defined in `electron-app/src/shared/protocol.ts` and follow a typed
 - `canvas add-polygon -p '<json-points>'` - Add polygon
 
 ### Element Manipulation
-- `canvas delete-element -i <id>` - Delete element
-- `canvas rotate-element -i <id> -a <degrees>` - Rotate element
+- `canvas delete-elements -i <ids>` - Delete elements (batch)
+- `canvas rotate-elements -i <ids> -a <degrees>` - Rotate elements (batch)
 - `canvas move-elements -i <ids> --delta-x <n> --delta-y <n>` - Move elements
 - `canvas group-elements -i <ids>` - Group elements
 - `canvas ungroup-element -i <id>` - Ungroup element

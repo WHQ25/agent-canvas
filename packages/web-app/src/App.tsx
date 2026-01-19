@@ -6,8 +6,8 @@ import type {
   AddLineParams,
   AddArrowParams,
   AddPolygonParams,
-  DeleteElementParams,
-  RotateElementParams,
+  DeleteElementsParams,
+  RotateElementsParams,
   GroupElementsParams,
   UngroupElementParams,
   MoveElementsParams,
@@ -234,57 +234,63 @@ export default function App() {
     }
   }, []);
 
-  const handleDeleteElement = useCallback((id: string, params: DeleteElementParams) => {
+  const handleDeleteElements = useCallback((id: string, params: DeleteElementsParams) => {
     const api = excalidrawAPIRef.current;
     if (!api) {
-      return { type: 'deleteElementResult', id, success: false, error: 'Canvas not ready' };
+      return { type: 'deleteElementsResult', id, success: false, error: 'Canvas not ready' };
     }
 
     try {
       const elements = api.getSceneElements();
-      const elementToDelete = elements.find(e => e.id === params.elementId);
+      const idsToDelete = new Set(params.elementIds);
+      let deletedCount = 0;
 
-      if (!elementToDelete) {
-        return { type: 'deleteElementResult', id, success: false, error: 'Element not found' };
+      const updatedElements = elements.map(e => {
+        if (idsToDelete.has(e.id)) {
+          deletedCount++;
+          return { ...e, isDeleted: true };
+        }
+        return e;
+      });
+
+      if (deletedCount === 0) {
+        return { type: 'deleteElementsResult', id, success: false, error: 'No elements found' };
       }
-
-      const updatedElements = elements.map(e =>
-        e.id === params.elementId ? { ...e, isDeleted: true } : e
-      );
 
       api.updateScene({
         elements: updatedElements,
         captureUpdate: 'immediately',
       });
 
-      return { type: 'deleteElementResult', id, success: true };
+      return { type: 'deleteElementsResult', id, success: true, deletedCount };
     } catch (error) {
-      return { type: 'deleteElementResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return { type: 'deleteElementsResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }, []);
 
-  const handleRotateElement = useCallback((id: string, params: RotateElementParams) => {
+  const handleRotateElements = useCallback((id: string, params: RotateElementsParams) => {
     const api = excalidrawAPIRef.current;
     if (!api) {
-      return { type: 'rotateElementResult', id, success: false, error: 'Canvas not ready' };
+      return { type: 'rotateElementsResult', id, success: false, error: 'Canvas not ready' };
     }
 
     try {
       const elements = api.getSceneElements();
-      const element = elements.find(e => e.id === params.elementId);
-
-      if (!element) {
-        return { type: 'rotateElementResult', id, success: false, error: 'Element not found' };
-      }
-
+      const idsToRotate = new Set(params.elementIds);
       const angleInRadians = (params.angle * Math.PI) / 180;
       let rotatedCount = 0;
 
-      const groupId = element.groupIds?.[0];
+      // Collect all group IDs from the target elements
+      const groupIds = new Set<string>();
+      elements.forEach(e => {
+        if (idsToRotate.has(e.id) && e.groupIds?.length) {
+          e.groupIds.forEach(gid => groupIds.add(gid));
+        }
+      });
+
       const updatedElements = elements.map(e => {
-        const shouldRotate = groupId
-          ? e.groupIds?.includes(groupId)
-          : e.id === params.elementId;
+        const shouldRotate = idsToRotate.has(e.id) ||
+          (groupIds.size > 0 && e.groupIds?.some(gid => groupIds.has(gid)));
 
         if (shouldRotate) {
           rotatedCount++;
@@ -293,14 +299,18 @@ export default function App() {
         return e;
       });
 
+      if (rotatedCount === 0) {
+        return { type: 'rotateElementsResult', id, success: false, error: 'No elements found' };
+      }
+
       api.updateScene({
         elements: updatedElements,
         captureUpdate: 'immediately',
       });
 
-      return { type: 'rotateElementResult', id, success: true, rotatedCount };
+      return { type: 'rotateElementsResult', id, success: true, rotatedCount };
     } catch (error) {
-      return { type: 'rotateElementResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return { type: 'rotateElementsResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }, []);
 
@@ -544,10 +554,10 @@ export default function App() {
         return handleAddArrow(command.id, command.params as AddArrowParams);
       case 'addPolygon':
         return handleAddPolygon(command.id, command.params as AddPolygonParams);
-      case 'deleteElement':
-        return handleDeleteElement(command.id, command.params as DeleteElementParams);
-      case 'rotateElement':
-        return handleRotateElement(command.id, command.params as RotateElementParams);
+      case 'deleteElements':
+        return handleDeleteElements(command.id, command.params as DeleteElementsParams);
+      case 'rotateElements':
+        return handleRotateElements(command.id, command.params as RotateElementsParams);
       case 'groupElements':
         return handleGroupElements(command.id, command.params as GroupElementsParams);
       case 'ungroupElement':
@@ -567,7 +577,7 @@ export default function App() {
     }
   }, [
     handleAddShape, handleAddText, handleAddLine, handleAddArrow, handleAddPolygon,
-    handleDeleteElement, handleRotateElement, handleGroupElements, handleUngroupElement,
+    handleDeleteElements, handleRotateElements, handleGroupElements, handleUngroupElement,
     handleMoveElements, handleReadScene, handleLoadScene, handleSaveScene, handleExportImage,
   ]);
 

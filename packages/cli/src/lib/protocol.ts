@@ -121,31 +121,32 @@ export interface AddPolygonResponse {
 }
 
 // ============================================================================
-// Delete Element
+// Delete Elements
 // ============================================================================
 
-export interface DeleteElementParams {
-  elementId: string;
+export interface DeleteElementsParams {
+  elementIds: string[];
 }
 
-export interface DeleteElementResponse {
-  type: 'deleteElementResult';
+export interface DeleteElementsResponse {
+  type: 'deleteElementsResult';
   id: string;
   success: boolean;
+  deletedCount?: number;
   error?: string;
 }
 
 // ============================================================================
-// Rotate Element
+// Rotate Elements
 // ============================================================================
 
-export interface RotateElementParams {
-  elementId: string;
+export interface RotateElementsParams {
+  elementIds: string[];
   angle: number;
 }
 
-export interface RotateElementResponse {
-  type: 'rotateElementResult';
+export interface RotateElementsResponse {
+  type: 'rotateElementsResult';
   id: string;
   success: boolean;
   rotatedCount?: number;

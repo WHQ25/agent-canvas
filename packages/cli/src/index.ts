@@ -9,8 +9,8 @@ import type {
   AddLineResponse,
   AddArrowResponse,
   AddPolygonResponse,
-  DeleteElementResponse,
-  RotateElementResponse,
+  DeleteElementsResponse,
+  RotateElementsResponse,
   GroupElementsResponse,
   UngroupElementResponse,
   MoveElementsResponse,
@@ -240,21 +240,22 @@ program
   });
 
 // ============================================================================
-// Delete Element
+// Delete Elements
 // ============================================================================
 program
-  .command('delete-element')
-  .description('Delete an element from the canvas')
-  .requiredOption('-i, --element-id <id>', 'Element ID to delete')
+  .command('delete-elements')
+  .description('Delete elements from the canvas')
+  .requiredOption('-i, --element-ids <ids>', 'Comma-separated element IDs to delete')
   .action(async (options) => {
+    const elementIds = options.elementIds.split(',').map((s: string) => s.trim());
     const client = await connectToCanvas();
-    const result = await client.send<DeleteElementResponse>({
-      type: 'deleteElement',
+    const result = await client.send<DeleteElementsResponse>({
+      type: 'deleteElements',
       id: generateId(),
-      params: { elementId: options.elementId },
+      params: { elementIds },
     });
     if (result.success) {
-      console.log('Element deleted');
+      console.log(`Deleted ${result.deletedCount} element(s)`);
     } else {
       console.error(`Failed: ${result.error}`);
       process.exit(1);
@@ -263,19 +264,20 @@ program
   });
 
 // ============================================================================
-// Rotate Element
+// Rotate Elements
 // ============================================================================
 program
-  .command('rotate-element')
-  .description('Rotate an element (degrees, positive = clockwise)')
-  .requiredOption('-i, --element-id <id>', 'Element ID to rotate')
+  .command('rotate-elements')
+  .description('Rotate elements (degrees, positive = clockwise)')
+  .requiredOption('-i, --element-ids <ids>', 'Comma-separated element IDs to rotate')
   .requiredOption('-a, --angle <degrees>', 'Rotation angle in degrees', parseFloat)
   .action(async (options) => {
+    const elementIds = options.elementIds.split(',').map((s: string) => s.trim());
     const client = await connectToCanvas();
-    const result = await client.send<RotateElementResponse>({
-      type: 'rotateElement',
+    const result = await client.send<RotateElementsResponse>({
+      type: 'rotateElements',
       id: generateId(),
-      params: { elementId: options.elementId, angle: options.angle },
+      params: { elementIds, angle: options.angle },
     });
     if (result.success) {
       console.log(`Rotated ${result.rotatedCount} element(s)`);
