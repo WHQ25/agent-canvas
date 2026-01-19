@@ -1,8 +1,8 @@
 # Agent Canvas
 
-An AI agent skill for drawing diagrams, flowcharts, and visualizations on an Excalidraw canvas.
+An AI agent skill for drawing diagrams, flowcharts, and visualizations. Give your agents an Excalidraw canvas and see what they can do!
 
-## Install Skill
+## Installation
 
 ```bash
 npx add-skill WHQ25/agent-canvas --skill agent-canvas
@@ -39,19 +39,18 @@ npm install -g @agent-canvas/cli
 - **File I/O**: load and save .excalidraw files
 - **PNG export**: with scale, dark mode, and embed scene options
 
-## Usage Examples
-
-See the [references folder](skills/agent-canvas/references/) for detailed examples:
-
-- [Flowcharts](skills/agent-canvas/references/flowchart.md) - Process flows, decision trees
-- [Architecture Diagrams](skills/agent-canvas/references/architecture.md) - System design, microservices
-- [Mind Maps](skills/agent-canvas/references/mindmap.md) - Brainstorming, project planning
-
 ## Contributing
 
-Contributions are welcome! You can:
+Contributions are welcome!
 
-1. Add new diagram examples to `skills/agent-canvas/references/`
+The skill is located in `skills/agent-canvas/`:
+
+- `SKILL.md` - CLI command reference (how to use each command)
+- `references/` - Drawing tutorials for specific diagram types (flowcharts, UI mockups, etc.)
+
+**How to contribute:**
+
+1. Add new drawing tutorials to `skills/agent-canvas/references/`
 2. Improve the CLI tool in `packages/cli/`
 3. Report issues or suggest features
 
@@ -67,7 +66,3 @@ bun run build
 # Run in dev mode
 bun run dev
 ```
-
-## License
-
-MIT

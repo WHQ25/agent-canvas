@@ -6,6 +6,7 @@ metadata:
   author: WHQ25
   version: "0.1.2"
   repository: https://github.com/WHQ25/agent-canvas
+allowed-tools: Bash(agent-canvas:*)
 ---
 
 # Agent Canvas
@@ -122,8 +123,4 @@ agent-canvas add-arrow -x 160 -y 360 --end-x 160 --end-y 400
 
 ## More Examples
 
-See the references folder for detailed examples:
-
-- [Flowcharts](references/flowchart.md) - Process flows, decision trees
-- [Architecture Diagrams](references/architecture.md) - System design, microservices
-- [Mind Maps](references/mindmap.md) - Brainstorming, project planning
+See [references/REFERENCE.md](references/REFERENCE.md) for tutorials on drawing different types of diagrams.
