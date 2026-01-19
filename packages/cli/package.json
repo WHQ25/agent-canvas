@@ -2,7 +2,7 @@
   "name": "@agent-canvas/cli",
   "version": "0.1.0",
   "bin": {
-    "canvas": "./bin/canvas.js"
+    "agent-canvas": "./bin/agent-canvas.js"
   },
   "main": "dist/index.js",
   "type": "module",

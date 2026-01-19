@@ -72,29 +72,29 @@ Messages are defined in `electron-app/src/shared/protocol.ts` and follow a typed
 ## CLI Commands
 
 ### Application Control
-- `canvas start` - Start in browser mode (default)
-- `canvas start --app` - Start in Electron mode
-- `canvas start -f <path>` - Load .excalidraw file on start
+- `agent-canvas start` - Start in browser mode (default)
+- `agent-canvas start --app` - Start in Electron mode
+- `agent-canvas start -f <path>` - Load .excalidraw file on start
 
 ### Drawing Commands
-- `canvas add-shape -t <rectangle|ellipse|diamond> -x <n> -y <n>` - Add shape
-- `canvas add-text -t <text> -x <n> -y <n>` - Add text
-- `canvas add-line -x <n> -y <n> --end-x <n> --end-y <n>` - Add line
-- `canvas add-arrow -x <n> -y <n> --end-x <n> --end-y <n>` - Add arrow
-- `canvas add-polygon -p '<json-points>'` - Add polygon
+- `agent-canvas add-shape -t <rectangle|ellipse|diamond> -x <n> -y <n>` - Add shape
+- `agent-canvas add-text -t <text> -x <n> -y <n>` - Add text
+- `agent-canvas add-line -x <n> -y <n> --end-x <n> --end-y <n>` - Add line
+- `agent-canvas add-arrow -x <n> -y <n> --end-x <n> --end-y <n>` - Add arrow
+- `agent-canvas add-polygon -p '<json-points>'` - Add polygon
 
 ### Element Manipulation
-- `canvas delete-elements -i <ids>` - Delete elements (batch)
-- `canvas rotate-elements -i <ids> -a <degrees>` - Rotate elements (batch)
-- `canvas move-elements -i <ids> --delta-x <n> --delta-y <n>` - Move elements
-- `canvas group-elements -i <ids>` - Group elements
-- `canvas ungroup-element -i <id>` - Ungroup element
+- `agent-canvas delete-elements -i <ids>` - Delete elements (batch)
+- `agent-canvas rotate-elements -i <ids> -a <degrees>` - Rotate elements (batch)
+- `agent-canvas move-elements -i <ids> --delta-x <n> --delta-y <n>` - Move elements
+- `agent-canvas group-elements -i <ids>` - Group elements
+- `agent-canvas ungroup-element -i <id>` - Ungroup element
 
 ### Scene Operations
-- `canvas read` - Read scene (TOON format)
-- `canvas read --json` - Read scene (JSON format)
-- `canvas save <filepath>` - Save to .excalidraw file
-- `canvas export -o <path>` - Export to PNG
+- `agent-canvas read` - Read scene (TOON format)
+- `agent-canvas read --json` - Read scene (JSON format)
+- `agent-canvas save <filepath>` - Save to .excalidraw file
+- `agent-canvas export -o <path>` - Export to PNG
 
 ## Drawing Tips for Agents
 

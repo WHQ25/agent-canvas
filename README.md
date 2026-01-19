@@ -45,65 +45,65 @@ cd packages/cli && bun run dev start
 
 ```bash
 # Browser mode (default) - opens in your browser
-canvas start
-canvas start -f diagram.excalidraw
+agent-canvas start
+agent-canvas start -f diagram.excalidraw
 
 # Electron mode - opens desktop app
-canvas start --app
-canvas start --app -f diagram.excalidraw
+agent-canvas start --app
+agent-canvas start --app -f diagram.excalidraw
 ```
 
 ### Drawing
 
 ```bash
 # Add shapes
-canvas add-shape -t rectangle -x 100 -y 100 -w 200 -h 100 --background-color "#FFA07A" -l "My Box"
-canvas add-shape -t ellipse -x 300 -y 100 -w 100 -h 100
-canvas add-shape -t diamond -x 500 -y 100 -w 100 -h 100
+agent-canvas add-shape -t rectangle -x 100 -y 100 -w 200 -h 100 --background-color "#FFA07A" -l "My Box"
+agent-canvas add-shape -t ellipse -x 300 -y 100 -w 100 -h 100
+agent-canvas add-shape -t diamond -x 500 -y 100 -w 100 -h 100
 
 # Add text
-canvas add-text -t "Hello World" -x 100 -y 300 --font-size 24
+agent-canvas add-text -t "Hello World" -x 100 -y 300 --font-size 24
 
 # Add lines and arrows
-canvas add-line -x 100 -y 400 --end-x 300 --end-y 400
-canvas add-arrow -x 100 -y 500 --end-x 300 --end-y 500
+agent-canvas add-line -x 100 -y 400 --end-x 300 --end-y 400
+agent-canvas add-arrow -x 100 -y 500 --end-x 300 --end-y 500
 
 # Add polygon
-canvas add-polygon -p '[{"x":0,"y":0},{"x":100,"y":0},{"x":50,"y":100}]'
+agent-canvas add-polygon -p '[{"x":0,"y":0},{"x":100,"y":0},{"x":50,"y":100}]'
 ```
 
 ### Element Manipulation
 
 ```bash
 # Delete elements (supports batch)
-canvas delete-elements -i <id1>,<id2>,<id3>
+agent-canvas delete-elements -i <id1>,<id2>,<id3>
 
 # Rotate elements (degrees, positive = clockwise, supports batch)
-canvas rotate-elements -i <id1>,<id2> -a 45
+agent-canvas rotate-elements -i <id1>,<id2> -a 45
 
 # Move elements
-canvas move-elements -i <id1>,<id2> --delta-x 50 --delta-y 100
+agent-canvas move-elements -i <id1>,<id2> --delta-x 50 --delta-y 100
 
 # Group/ungroup
-canvas group-elements -i <id1>,<id2>,<id3>
-canvas ungroup-element -i <element-id>
+agent-canvas group-elements -i <id1>,<id2>,<id3>
+agent-canvas ungroup-element -i <element-id>
 ```
 
 ### Read & Export
 
 ```bash
 # Read scene (TOON format - token efficient)
-canvas read
+agent-canvas read
 
 # Read scene (JSON format)
-canvas read --json
+agent-canvas read --json
 
 # Save to file
-canvas save diagram.excalidraw
+agent-canvas save diagram.excalidraw
 
 # Export to PNG
-canvas export -o output.png
-canvas export -o output.png --scale 2 --dark --no-background
+agent-canvas export -o output.png
+agent-canvas export -o output.png --scale 2 --dark --no-background
 ```
 
 ## Project Structure

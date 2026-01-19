@@ -10,21 +10,61 @@ import type { LoadSceneResponse } from '../lib/protocol';
 const execAsync = promisify(exec);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function getElectronAppPath(): string {
-  return resolve(__dirname, '../../../electron-app');
+function getDevElectronAppPath(): string | null {
+  // Check if running in monorepo dev mode
+  const devPath = resolve(__dirname, '../../../electron-app');
+  if (existsSync(resolve(devPath, 'package.json'))) {
+    return devPath;
+  }
+  return null;
+}
+
+async function findElectronAppCommand(): Promise<string | null> {
+  // Check if agent-canvas-app command is available
+  try {
+    const cmd = process.platform === 'win32' ? 'where' : 'which';
+    await execAsync(`${cmd} agent-canvas-app`);
+    return 'agent-canvas-app';
+  } catch {
+    return null;
+  }
 }
 
 async function launchElectronApp(): Promise<void> {
-  const appPath = getElectronAppPath();
+  // First, try to find installed electron-app command
+  const appCommand = await findElectronAppCommand();
 
-  const child = spawn('bun', ['run', 'dev'], {
-    cwd: appPath,
-    detached: true,
-    stdio: 'ignore',
-  });
+  if (appCommand) {
+    // Use installed electron-app
+    const child = spawn(appCommand, [], {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.unref();
+  } else {
+    // Check if running in dev mode (monorepo)
+    const devPath = getDevElectronAppPath();
+    if (devPath) {
+      const child = spawn('bun', ['run', 'dev'], {
+        cwd: devPath,
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+    } else {
+      // electron-app not found
+      console.error('Electron app not found.');
+      console.error('');
+      console.error('To use --app mode, install the electron app:');
+      console.error('  npm install -g @agent-canvas/electron-app');
+      console.error('');
+      console.error('Or use browser mode (default):');
+      console.error('  agent-canvas start');
+      process.exit(1);
+    }
+  }
 
-  child.unref();
-
+  // Wait for app to start
   const maxRetries = 30;
   const retryInterval = 500;
 
