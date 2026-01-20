@@ -15,16 +15,24 @@ A CLI tool to interact with an Excalidraw canvas for creating diagrams and visua
 
 ## Installation
 
-Before using, check if CLI is installed and version matches:
+Before using, check if CLI is installed:
 
 ```bash
-agent-canvas --version  # Should output: 0.2.0
+which agent-canvas && agent-canvas --version
 ```
 
-- If not installed or version differs, install/upgrade:
+- **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  npm install -g @agent-canvas/cli@0.2.0
+  bun add -g @agent-canvas/cli@0.2.1
+  # or
+  npm install -g @agent-canvas/cli@0.2.1
   ```
+
+- **If installed but version differs from 0.2.1**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.2.1`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.2.1`
+
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.2.1
 
 ## Quick Start
 
@@ -47,7 +55,7 @@ agent-canvas start -f file.excalidraw # Load existing file on start
 ```bash
 agent-canvas add-text -t "<text>" -x <x> -y <y> [options]
 ```
-- Options: `--font-size <size>`, `--text-align <left|center|right>`, `-n/--note`
+- Options: `--font-size <size>`, `--text-align <left|center|right>`, `--stroke-color <hex>`, `-n/--note <text>`
 - Font sizes: S=16, M=20 (default), L=28, XL=36
 
 ### Add Drawing Elements
@@ -108,7 +116,7 @@ agent-canvas read --json         # Raw Excalidraw scene JSON
 shapes[N]{id,type,x,y,w,h,angle,labelId,note}       # rectangle, ellipse, diamond, polygon
 lines[N]{id,type,x,y,endX,endY,points,angle,note}   # line, arrow
 labels[N]{id,containerId,content,x,y,w,h}           # text bound to shapes (via labelId)
-texts[N]{id,content,x,y,w,h,angle}                   # standalone text elements
+texts[N]{id,content,x,y,w,h,angle,note}              # standalone text elements
 groups[N]{id,elementIds}                             # element groupings
 ```
 

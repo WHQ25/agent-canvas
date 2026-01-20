@@ -442,6 +442,7 @@ program
                 w: el.width !== undefined ? Math.round(el.width) : null,
                 h: el.height !== undefined ? Math.round(el.height) : null,
                 angle,
+                note: (el.customData as { note?: string } | undefined)?.note ?? null,
               };
               if (withStyle) {
                 text.stroke = el.strokeColor ?? null;
