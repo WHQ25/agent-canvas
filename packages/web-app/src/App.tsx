@@ -1,5 +1,7 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { Excalidraw, convertToExcalidrawElements, exportToBlob } from '@excalidraw/excalidraw';
+
+const STORAGE_KEY = 'agent-canvas-scene';
 import type {
   AddShapeParams,
   AddTextParams,
@@ -56,9 +58,95 @@ interface ExcalidrawAPI {
   }) => void;
 }
 
+// Load saved scene from localStorage
+const loadSavedScene = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const data = JSON.parse(saved);
+      return {
+        elements: data.elements || [],
+        appState: data.appState || {},
+      };
+    }
+  } catch (error) {
+    console.error('Failed to load saved scene:', error);
+  }
+  return null;
+};
+
+// AppState keys to save (matching Excalidraw's browser: true config)
+const APP_STATE_KEYS_TO_SAVE = [
+  'showWelcomeScreen',
+  'theme',
+  'currentChartType',
+  'currentItemBackgroundColor',
+  'currentItemEndArrowhead',
+  'currentItemFillStyle',
+  'currentItemFontFamily',
+  'currentItemFontSize',
+  'currentItemOpacity',
+  'currentItemRoughness',
+  'currentItemStartArrowhead',
+  'currentItemStrokeColor',
+  'currentItemStrokeStyle',
+  'currentItemStrokeWidth',
+  'currentItemTextAlign',
+  'currentItemRoundness',
+  'currentItemArrowType',
+  'cursorButton',
+  'editingGroupId',
+  'activeTool',
+  'penMode',
+  'penDetected',
+  'exportBackground',
+  'exportEmbedScene',
+  'exportScale',
+  'exportWithDarkMode',
+  'gridSize',
+  'gridStep',
+  'gridModeEnabled',
+  'defaultSidebarDockedPreference',
+  'lastPointerDownWith',
+  'name',
+  'openMenu',
+  'openSidebar',
+  'previousSelectedElementIds',
+  'scrolledOutside',
+  'scrollX',
+  'scrollY',
+  'selectedElementIds',
+  'selectedGroupIds',
+  'shouldCacheIgnoreZoom',
+  'stats',
+  'viewBackgroundColor',
+  'zenModeEnabled',
+  'zoom',
+  'selectedLinearElement',
+  'objectsSnapModeEnabled',
+] as const;
+
+// Save scene to localStorage
+const saveScene = (elements: readonly unknown[], appState: unknown) => {
+  try {
+    const state = appState as Record<string, unknown>;
+    const filteredAppState: Record<string, unknown> = {};
+    for (const key of APP_STATE_KEYS_TO_SAVE) {
+      if (key in state) {
+        filteredAppState[key] = state[key];
+      }
+    }
+    const data = { elements, appState: filteredAppState };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.error('Failed to save scene:', error);
+  }
+};
+
 export default function App() {
   const excalidrawAPIRef = useRef<ExcalidrawAPI | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const [initialData] = useState(loadSavedScene);
 
   // Handler functions
   const handleAddShape = useCallback((id: string, params: AddShapeParams) => {
@@ -667,9 +755,18 @@ export default function App() {
     };
   }, [processCommand]);
 
+  // Save on change (debounced by Excalidraw internally)
+  const handleChange = useCallback((elements: readonly unknown[], appState: unknown) => {
+    saveScene(elements, appState);
+  }, []);
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-      <Excalidraw excalidrawAPI={(api) => { excalidrawAPIRef.current = api as unknown as ExcalidrawAPI; }} />
+      <Excalidraw
+        excalidrawAPI={(api) => { excalidrawAPIRef.current = api as unknown as ExcalidrawAPI; }}
+        initialData={initialData || undefined}
+        onChange={handleChange}
+      />
     </div>
   );
 }

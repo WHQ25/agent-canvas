@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.2.0"
+  version: "0.2.1"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
