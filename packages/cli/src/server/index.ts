@@ -108,6 +108,15 @@ export function startServer(): Promise<{ httpUrl: string; wsPort: number; close:
             return;
           }
 
+          // Check if browser is connected
+          if (message.type === 'isBrowserConnected') {
+            ws.send(JSON.stringify({
+              type: 'browserStatus',
+              connected: browserClient !== null && browserClient.readyState === WebSocket.OPEN,
+            }));
+            return;
+          }
+
           // If this is from browser (response), forward to CLI client
           if (message.id && pendingRequests.has(message.id)) {
             const cliClient = pendingRequests.get(message.id)!;
@@ -173,6 +182,38 @@ export function isBrowserServerRunning(): Promise<boolean> {
       clearTimeout(timer);
       ws.close();
       resolve(true);
+    });
+
+    ws.on('error', () => {
+      clearTimeout(timer);
+      resolve(false);
+    });
+  });
+}
+
+export function isBrowserConnected(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const ws = new WebSocket(`ws://localhost:${WS_PORT}`);
+    const timer = setTimeout(() => {
+      ws.close();
+      resolve(false);
+    }, 1000);
+
+    ws.on('open', () => {
+      ws.send(JSON.stringify({ type: 'isBrowserConnected' }));
+    });
+
+    ws.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === 'browserStatus') {
+          clearTimeout(timer);
+          ws.close();
+          resolve(msg.connected);
+        }
+      } catch {
+        // ignore
+      }
     });
 
     ws.on('error', () => {

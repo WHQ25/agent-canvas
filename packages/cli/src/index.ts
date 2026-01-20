@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { writeFileSync } from 'node:fs';
 import { encode as toToon } from '@toon-format/toon';
-import { startBrowser, startApp } from './commands/start.js';
+import { start } from './commands/start.js';
 import { connectToCanvas, generateId } from './lib/ws-client.js';
 import type {
   AddShapeParams, AddShapeResponse,
@@ -24,19 +24,14 @@ const program = new Command();
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.1.2');
+  .version('0.2.0');
 
 program
   .command('start')
-  .description('Start the canvas (browser mode by default, use --app for Electron)')
+  .description('Start the canvas server and open in browser')
   .option('-f, --file <path>', 'Load an .excalidraw file on start')
-  .option('--app', 'Use Electron app instead of browser')
   .action(async (options) => {
-    if (options.app) {
-      await startApp(options.file);
-    } else {
-      await startBrowser(options.file);
-    }
+    await start(options.file);
   });
 
 // ============================================================================
@@ -57,6 +52,7 @@ program
   .option('--fill-style <style>', 'Fill style: hachure, cross-hatch, solid, or zigzag')
   .option('-l, --label <text>', 'Text label inside the shape')
   .option('--label-font-size <number>', 'Label font size', parseFloat)
+  .option('-n, --note <text>', 'Note for this element (stored in customData)')
   .action(async (options) => {
     const client = await connectToCanvas();
     const params: AddShapeParams = {
@@ -70,6 +66,7 @@ program
       strokeWidth: options.strokeWidth,
       strokeStyle: options.strokeStyle,
       fillStyle: options.fillStyle,
+      customData: options.note ? { note: options.note } : undefined,
     };
     if (options.label) {
       params.label = { text: options.label, fontSize: options.labelFontSize };
@@ -96,6 +93,7 @@ program
   .option('--font-size <number>', 'Font size', parseFloat)
   .option('--text-align <align>', 'Text alignment: left, center, or right')
   .option('--stroke-color <color>', 'Text color (hex)')
+  .option('-n, --note <text>', 'Note for this element (stored in customData)')
   .action(async (options) => {
     const client = await connectToCanvas();
     const result = await client.send<AddTextResponse>({
@@ -108,6 +106,7 @@ program
         fontSize: options.fontSize,
         textAlign: options.textAlign,
         strokeColor: options.strokeColor,
+        customData: options.note ? { note: options.note } : undefined,
       },
     });
     if (result.success) {
@@ -132,6 +131,7 @@ program
   .option('--stroke-color <color>', 'Line color (hex)')
   .option('--stroke-width <number>', 'Line width in pixels', parseFloat)
   .option('--stroke-style <style>', 'Line style: solid, dashed, or dotted')
+  .option('-n, --note <text>', 'Note for this element (stored in customData)')
   .action(async (options) => {
     const client = await connectToCanvas();
     const result = await client.send<AddLineResponse>({
@@ -145,6 +145,7 @@ program
         strokeColor: options.strokeColor,
         strokeWidth: options.strokeWidth,
         strokeStyle: options.strokeStyle,
+        customData: options.note ? { note: options.note } : undefined,
       },
     });
     if (result.success) {
@@ -171,6 +172,7 @@ program
   .option('--stroke-style <style>', 'Arrow style: solid, dashed, or dotted')
   .option('--start-arrowhead <type>', 'Start arrowhead: arrow, bar, dot, triangle, diamond, none')
   .option('--end-arrowhead <type>', 'End arrowhead: arrow, bar, dot, triangle, diamond, none')
+  .option('-n, --note <text>', 'Note for this element (stored in customData)')
   .action(async (options) => {
     const client = await connectToCanvas();
     const result = await client.send<AddArrowResponse>({
@@ -186,6 +188,7 @@ program
         strokeStyle: options.strokeStyle,
         startArrowhead: options.startArrowhead,
         endArrowhead: options.endArrowhead,
+        customData: options.note ? { note: options.note } : undefined,
       },
     });
     if (result.success) {
@@ -209,6 +212,7 @@ program
   .option('--stroke-width <number>', 'Stroke width in pixels', parseFloat)
   .option('--stroke-style <style>', 'Stroke style: solid, dashed, or dotted')
   .option('--fill-style <style>', 'Fill style: hachure, cross-hatch, solid, or zigzag')
+  .option('-n, --note <text>', 'Note for this element (stored in customData)')
   .action(async (options) => {
     let points;
     try {
@@ -228,6 +232,7 @@ program
         strokeWidth: options.strokeWidth,
         strokeStyle: options.strokeStyle,
         fillStyle: options.fillStyle,
+        customData: options.note ? { note: options.note } : undefined,
       },
     });
     if (result.success) {
@@ -367,30 +372,165 @@ program
 program
   .command('read')
   .description('Read all elements from the canvas (TOON format by default)')
-  .option('--json', 'Output as JSON')
+  .option('--json', 'Output raw Excalidraw scene JSON')
+  .option('--with-style', 'Include style info (stroke, bg) in TOON output')
   .action(async (options) => {
     const client = await connectToCanvas();
+
+    if (options.json) {
+      // Return raw Excalidraw scene data
+      const result = await client.send<SaveSceneResponse>({
+        type: 'saveScene',
+        id: generateId(),
+      });
+      if (result.success && result.data) {
+        console.log(JSON.stringify(result.data, null, 2));
+      } else {
+        console.error(`Failed: ${result.error}`);
+        process.exit(1);
+      }
+      client.close();
+      return;
+    }
+
     const result = await client.send<ReadSceneResponse>({
       type: 'readScene',
       id: generateId(),
     });
     if (result.success && result.elements) {
-      if (options.json) {
-        console.log(JSON.stringify(result.elements, null, 2));
-      } else {
-        // Simplify elements for TOON output
-        const elements = result.elements.map(el => ({
-          id: el.id,
-          type: el.type,
-          x: Math.round(el.x),
-          y: Math.round(el.y),
-          ...(el.width !== undefined && { w: Math.round(el.width) }),
-          ...(el.height !== undefined && { h: Math.round(el.height) }),
-          ...(el.text && { text: el.text }),
-          ...(el.groupIds?.length && { groups: el.groupIds }),
+        const withStyle = options.withStyle;
+
+        // Separate elements into shapes, lines, labels (bound text), texts (standalone text), and groups
+        const shapes: Array<Record<string, unknown>> = [];
+        const lines: Array<Record<string, unknown>> = [];
+        const labels: Array<Record<string, unknown>> = [];
+        const texts: Array<Record<string, unknown>> = [];
+        const groupsMap = new Map<string, string[]>(); // groupId -> elementIds
+
+        for (const el of result.elements) {
+          const angle = el.angle ? Math.round(el.angle * 180 / Math.PI) : 0; // Convert radians to degrees
+
+          // Collect group memberships
+          if (el.groupIds?.length) {
+            for (const groupId of el.groupIds) {
+              if (!groupsMap.has(groupId)) {
+                groupsMap.set(groupId, []);
+              }
+              groupsMap.get(groupId)!.push(el.id);
+            }
+          }
+
+          if (el.type === 'text') {
+            if (el.containerId) {
+              // Bound text (label)
+              labels.push({
+                id: el.id,
+                containerId: el.containerId,
+                content: el.text ?? '',
+                x: Math.round(el.x),
+                y: Math.round(el.y),
+                w: el.width !== undefined ? Math.round(el.width) : null,
+                h: el.height !== undefined ? Math.round(el.height) : null,
+              });
+            } else {
+              // Standalone text
+              const text: Record<string, unknown> = {
+                id: el.id,
+                content: el.text ?? '',
+                x: Math.round(el.x),
+                y: Math.round(el.y),
+                w: el.width !== undefined ? Math.round(el.width) : null,
+                h: el.height !== undefined ? Math.round(el.height) : null,
+                angle,
+              };
+              if (withStyle) {
+                text.stroke = el.strokeColor ?? null;
+              }
+              texts.push(text);
+            }
+          } else if (el.type === 'line' || el.type === 'arrow') {
+            const pts = el.points ?? [];
+            // Check if it's a closed polygon (first and last point within 8px threshold)
+            const isPolygon = el.type === 'line' && pts.length >= 3 && (() => {
+              const first = pts[0];
+              const last = pts[pts.length - 1];
+              const distance = Math.sqrt((last[0] - first[0]) ** 2 + (last[1] - first[1]) ** 2);
+              return distance <= 8;
+            })();
+
+            if (isPolygon) {
+              // Polygon - treat as shape
+              // Calculate bounding box from points
+              const xs = pts.map(p => p[0]);
+              const ys = pts.map(p => p[1]);
+              const minX = Math.min(...xs);
+              const maxX = Math.max(...xs);
+              const minY = Math.min(...ys);
+              const maxY = Math.max(...ys);
+              const shape: Record<string, unknown> = {
+                id: el.id,
+                type: 'polygon',
+                x: Math.round(el.x + minX),
+                y: Math.round(el.y + minY),
+                w: Math.round(maxX - minX),
+                h: Math.round(maxY - minY),
+                angle,
+                labelId: null,
+                note: (el.customData as { note?: string } | undefined)?.note ?? null,
+              };
+              if (withStyle) {
+                shape.stroke = el.strokeColor ?? null;
+                shape.bg = el.backgroundColor ?? null;
+              }
+              shapes.push(shape);
+            } else {
+              // Line/Arrow element
+              const lastPt = pts.length > 0 ? pts[pts.length - 1] : [0, 0];
+              const line: Record<string, unknown> = {
+                id: el.id,
+                type: el.type,
+                x: Math.round(el.x),
+                y: Math.round(el.y),
+                endX: Math.round(el.x + lastPt[0]),
+                endY: Math.round(el.y + lastPt[1]),
+                points: pts.length,
+                angle,
+                note: (el.customData as { note?: string } | undefined)?.note ?? null,
+              };
+              if (withStyle) {
+                line.stroke = el.strokeColor ?? null;
+              }
+              lines.push(line);
+            }
+          } else {
+            // Shape element (rectangle, ellipse, diamond, etc.)
+            const boundText = el.boundElements?.find(b => b.type === 'text');
+            const shape: Record<string, unknown> = {
+              id: el.id,
+              type: el.type,
+              x: Math.round(el.x),
+              y: Math.round(el.y),
+              w: el.width !== undefined ? Math.round(el.width) : null,
+              h: el.height !== undefined ? Math.round(el.height) : null,
+              angle,
+              labelId: boundText?.id ?? null,
+              note: (el.customData as { note?: string } | undefined)?.note ?? null,
+            };
+            if (withStyle) {
+              shape.stroke = el.strokeColor ?? null;
+              shape.bg = el.backgroundColor ?? null;
+            }
+            shapes.push(shape);
+          }
+        }
+
+        // Build groups array
+        const groups = Array.from(groupsMap.entries()).map(([id, elementIds]) => ({
+          id,
+          elementIds: elementIds.join(','),
         }));
-        console.log(toToon({ elements }));
-      }
+
+        console.log(toToon({ shapes, lines, labels, texts, groups }));
     } else {
       console.error(`Failed: ${result.error}`);
       process.exit(1);

@@ -8,15 +8,14 @@ Agent Canvas is an AI agent skill + CLI tool that provides an Excalidraw canvas 
 
 - **skills/agent-canvas/**: Agent skill (teaches AI agents how to use the CLI)
 - **packages/**: NPM packages in a Turborepo monorepo
-  - **web-app**: Browser frontend with Excalidraw (for browser mode)
-  - **electron-app**: Electron desktop application embedding Excalidraw (for `--app` mode)
-  - **cli**: Command-line interface with built-in HTTP/WebSocket server for browser mode
+  - **web-app**: Browser frontend with Excalidraw
+  - **cli**: Command-line interface with built-in HTTP/WebSocket server
 
 ## Tech Stack
 
 - **Package Manager**: Bun
 - **Monorepo**: Turborepo
-- **Electron App**: Electron + Vite + React + @excalidraw/excalidraw (0.18.0)
+- **Web App**: Vite + React + @excalidraw/excalidraw (0.18.0)
 - **CLI**: Commander.js + ws (WebSocket client)
 - **Language**: TypeScript
 
@@ -30,8 +29,8 @@ bun install
 bun run dev
 
 # Run specific package
-bun run dev --filter=electron-app
 bun run dev --filter=@agent-canvas/cli
+bun run dev --filter=@agent-canvas/web-app
 
 # Build all packages
 bun run build
@@ -41,10 +40,6 @@ bun run typecheck
 ```
 
 ## Architecture
-
-### Browser Mode (default)
-
-CLI commands → WebSocket → CLI Server → WebSocket → Browser (Excalidraw)
 
 ```
 CLI (ws-client) <--WebSocket:7890--> CLI Server (relay) <--WebSocket:7890--> Browser
@@ -56,26 +51,14 @@ CLI (ws-client) <--WebSocket:7890--> CLI Server (relay) <--WebSocket:7890--> Bro
 - WebSocket server relays messages on port **7890**
 - Browser connects as WebSocket client, identified by `browserConnect` message
 
-### Electron Mode (`--app`)
-
-CLI and Electron app communicate via WebSocket on port **7890**.
-
-```
-CLI (ws-client) <--WebSocket:7890--> Electron Main Process (ws-server)
-                                            |
-                                            v (IPC)
-                                    Renderer (Excalidraw)
-```
-
 ### Protocol
 
-Messages are defined in `electron-app/src/shared/protocol.ts` and follow a typed message pattern with `type` discriminator. Each request has an `id` for response matching.
+Messages are defined in `cli/src/lib/protocol.ts` and follow a typed message pattern with `type` discriminator. Each request has an `id` for response matching.
 
 ## CLI Commands
 
 ### Application Control
-- `agent-canvas start` - Start in browser mode (default)
-- `agent-canvas start --app` - Start in Electron mode
+- `agent-canvas start` - Start server and open browser
 - `agent-canvas start -f <path>` - Load .excalidraw file on start
 
 ### Drawing Commands
@@ -113,13 +96,11 @@ bun run dev add-arrow -x 200 -y 200 --end-x 200 --end-y 250
 | File | Purpose |
 |------|---------|
 | `cli/src/index.ts` | CLI commands |
-| `cli/src/server/index.ts` | HTTP + WebSocket server (browser mode) |
-| `cli/src/commands/start.ts` | Start command (browser/Electron mode) |
+| `cli/src/server/index.ts` | HTTP + WebSocket server |
+| `cli/src/commands/start.ts` | Start command |
 | `cli/src/lib/ws-client.ts` | WebSocket client |
-| `web-app/src/App.tsx` | Browser mode Excalidraw + WebSocket |
-| `electron-app/src/shared/protocol.ts` | WebSocket message types |
-| `electron-app/src/renderer/App.tsx` | Electron mode Excalidraw + IPC |
-| `electron-app/src/main/ws-server.ts` | Electron WebSocket server |
+| `cli/src/lib/protocol.ts` | WebSocket message types |
+| `web-app/src/App.tsx` | Excalidraw + WebSocket handler |
 | `skills/agent-canvas/SKILL.md` | Agent skill - CLI command reference |
 | `skills/agent-canvas/references/` | Drawing tutorials for diagram types |
 
@@ -142,5 +123,4 @@ When releasing a new version, update these files:
 
 1. `packages/cli/package.json` - version field
 2. `packages/cli/src/index.ts` - `.version('x.x.x')` (hardcoded)
-3. `packages/electron-app/package.json` - version field
-4. `skills/agent-canvas/SKILL.md` - metadata version field
+3. `skills/agent-canvas/SKILL.md` - metadata version field

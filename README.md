@@ -33,7 +33,7 @@ npm install -g @agent-canvas/cli
 
 ## Features
 
-- **Browser mode**: Opens Excalidraw in your browser - no extra installation required
+- **Browser-based**: Opens Excalidraw in your browser
 - **Full drawing capabilities**: shapes, text, lines, arrows, polygons
 - **Element manipulation**: move, rotate, group, delete
 - **File I/O**: load and save .excalidraw files

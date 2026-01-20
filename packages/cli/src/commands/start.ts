@@ -1,82 +1,12 @@
-import { spawn, exec } from 'child_process';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
+import { resolve } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import { promisify } from 'util';
-import { connectToCanvas, isCanvasRunning, generateId } from '../lib/ws-client.js';
-import { startServer, isBrowserServerRunning } from '../server/index.js';
+import { connectToCanvas, generateId } from '../lib/ws-client.js';
+import { startServer, isBrowserServerRunning, isBrowserConnected } from '../server/index.js';
 import type { LoadSceneResponse } from '../lib/protocol.js';
 
 const execAsync = promisify(exec);
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-function getDevElectronAppPath(): string | null {
-  // Check if running in monorepo dev mode
-  const devPath = resolve(__dirname, '../../../electron-app');
-  if (existsSync(resolve(devPath, 'package.json'))) {
-    return devPath;
-  }
-  return null;
-}
-
-async function findElectronAppCommand(): Promise<string | null> {
-  // Check if agent-canvas-app command is available
-  try {
-    const cmd = process.platform === 'win32' ? 'where' : 'which';
-    await execAsync(`${cmd} agent-canvas-app`);
-    return 'agent-canvas-app';
-  } catch {
-    return null;
-  }
-}
-
-async function launchElectronApp(): Promise<void> {
-  // First, try to find installed electron-app command
-  const appCommand = await findElectronAppCommand();
-
-  if (appCommand) {
-    // Use installed electron-app
-    const child = spawn(appCommand, [], {
-      detached: true,
-      stdio: 'ignore',
-    });
-    child.unref();
-  } else {
-    // Check if running in dev mode (monorepo)
-    const devPath = getDevElectronAppPath();
-    if (devPath) {
-      const child = spawn('bun', ['run', 'dev'], {
-        cwd: devPath,
-        detached: true,
-        stdio: 'ignore',
-      });
-      child.unref();
-    } else {
-      // electron-app not found
-      console.error('Electron app not found.');
-      console.error('');
-      console.error('To use --app mode, install the electron app:');
-      console.error('  npm install -g @agent-canvas/electron-app');
-      console.error('');
-      console.error('Or use browser mode (default):');
-      console.error('  agent-canvas start');
-      process.exit(1);
-    }
-  }
-
-  // Wait for app to start
-  const maxRetries = 30;
-  const retryInterval = 500;
-
-  for (let i = 0; i < maxRetries; i++) {
-    await new Promise((r) => setTimeout(r, retryInterval));
-    if (await isCanvasRunning()) {
-      return;
-    }
-  }
-
-  throw new Error('Failed to start electron app');
-}
 
 async function openBrowser(url: string): Promise<void> {
   const platform = process.platform;
@@ -125,8 +55,7 @@ async function loadFile(filePath: string): Promise<void> {
   }
 }
 
-// Browser mode (default)
-export async function startBrowser(filePath?: string): Promise<void> {
+export async function start(filePath?: string): Promise<void> {
   if (filePath) {
     const absolutePath = resolve(filePath);
     if (!existsSync(absolutePath)) {
@@ -137,15 +66,20 @@ export async function startBrowser(filePath?: string): Promise<void> {
 
   const running = await isBrowserServerRunning();
 
-  if (running) {
-    console.log('Canvas server already running');
+  if (!running) {
+    console.log('Starting canvas server...');
+    await startServer();
+  }
+
+  // Give existing browser tabs a moment to reconnect (browser reconnects every 1s)
+  await new Promise((r) => setTimeout(r, 1500));
+
+  const browserConnected = await isBrowserConnected();
+  if (browserConnected) {
+    console.log('Canvas already running at http://localhost:7891');
+  } else {
     console.log('Opening browser...');
     await openBrowser('http://localhost:7891');
-  } else {
-    console.log('Starting canvas server...');
-    const { httpUrl } = await startServer();
-    console.log('Opening browser...');
-    await openBrowser(httpUrl);
   }
 
   // Wait for browser to connect, then load file if specified
@@ -171,45 +105,4 @@ export async function startBrowser(filePath?: string): Promise<void> {
   // Keep the server running
   console.log('\nCanvas is ready. Press Ctrl+C to stop.');
   await new Promise(() => {}); // Block forever
-}
-
-// Electron app mode (--app)
-export async function startApp(filePath?: string): Promise<void> {
-  if (filePath) {
-    const absolutePath = resolve(filePath);
-    if (!existsSync(absolutePath)) {
-      console.error(`File not found: ${absolutePath}`);
-      process.exit(1);
-    }
-  }
-
-  console.log('Checking if canvas app is running...');
-
-  const running = await isCanvasRunning();
-
-  if (!running) {
-    console.log('Starting canvas app...');
-    await launchElectronApp();
-  }
-
-  console.log('Connecting to canvas app...');
-
-  try {
-    const client = await connectToCanvas();
-    console.log('Connected to canvas app');
-
-    if (filePath) {
-      await loadFile(filePath);
-    }
-
-    client.close();
-  } catch (err) {
-    console.error('Failed to connect:', err instanceof Error ? err.message : err);
-    process.exit(1);
-  }
-}
-
-// Legacy export for backward compatibility
-export async function start(filePath?: string): Promise<void> {
-  return startBrowser(filePath);
 }

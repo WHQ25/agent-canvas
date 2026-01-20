@@ -45,17 +45,7 @@ jobs:
         working-directory: packages/cli
         run: npm publish --access public --provenance
 
-      - name: Publish Electron App
-        if: ${{ github.event.inputs.dry_run != 'true' }}
-        working-directory: packages/electron-app
-        run: npm publish --access public --provenance
-
       - name: Dry run - CLI
         if: ${{ github.event.inputs.dry_run == 'true' }}
         working-directory: packages/cli
-        run: npm publish --access public --dry-run
-
-      - name: Dry run - Electron App
-        if: ${{ github.event.inputs.dry_run == 'true' }}
-        working-directory: packages/electron-app
         run: npm publish --access public --dry-run

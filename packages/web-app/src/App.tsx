@@ -18,6 +18,11 @@ import type {
 
 const WS_PORT = 7890;
 
+interface BoundElementRef {
+  id: string;
+  type: 'arrow' | 'text';
+}
+
 interface ExcalidrawElement {
   id: string;
   type: string;
@@ -32,9 +37,12 @@ interface ExcalidrawElement {
   backgroundColor?: string;
   text?: string;
   fontSize?: number;
+  containerId?: string | null;
+  boundElements?: readonly BoundElementRef[] | null;
   points?: number[][];
   startArrowhead?: string | null;
   endArrowhead?: string | null;
+  customData?: Record<string, unknown>;
 }
 
 interface ExcalidrawAPI {
@@ -70,7 +78,8 @@ export default function App() {
         backgroundColor: params.backgroundColor ?? 'transparent',
         strokeWidth: params.strokeWidth ?? 2,
         strokeStyle: params.strokeStyle ?? 'solid',
-        fillStyle: params.fillStyle ?? 'hachure',
+        fillStyle: params.fillStyle ?? 'solid',
+        customData: params.customData,
       };
 
       if (params.width !== undefined) shapeSkeleton.width = params.width;
@@ -79,7 +88,7 @@ export default function App() {
       if (params.label) {
         shapeSkeleton.label = {
           text: params.label.text.replace(/\\n/g, '\n'),
-          fontSize: params.label.fontSize ?? 20,
+          fontSize: params.label.fontSize ?? 16,
           textAlign: params.label.textAlign ?? 'center',
           verticalAlign: params.label.verticalAlign ?? 'middle',
           strokeColor: params.label.strokeColor,
@@ -87,8 +96,12 @@ export default function App() {
       }
 
       const newElements = convertToExcalidrawElements([shapeSkeleton]);
+      // Merge customData into converted element (convertToExcalidrawElements may not preserve it)
+      const elementsToAdd = params.customData
+        ? newElements.map(el => ({ ...el, customData: params.customData }))
+        : newElements;
       api.updateScene({
-        elements: [...elements, ...newElements],
+        elements: [...elements, ...elementsToAdd],
         captureUpdate: 'immediately',
       });
 
@@ -115,11 +128,15 @@ export default function App() {
         fontSize: params.fontSize ?? 20,
         textAlign: params.textAlign ?? 'left',
         strokeColor: params.strokeColor ?? '#1e1e1e',
+        customData: params.customData,
       };
 
       const newElements = convertToExcalidrawElements([textSkeleton]);
+      const elementsToAdd = params.customData
+        ? newElements.map(el => ({ ...el, customData: params.customData }))
+        : newElements;
       api.updateScene({
-        elements: [...elements, ...newElements],
+        elements: [...elements, ...elementsToAdd],
         captureUpdate: 'immediately',
       });
 
@@ -146,11 +163,15 @@ export default function App() {
         strokeColor: params.strokeColor ?? '#1e1e1e',
         strokeWidth: params.strokeWidth ?? 2,
         strokeStyle: params.strokeStyle ?? 'solid',
+        customData: params.customData,
       };
 
       const newElements = convertToExcalidrawElements([lineSkeleton]);
+      const elementsToAdd = params.customData
+        ? newElements.map(el => ({ ...el, customData: params.customData }))
+        : newElements;
       api.updateScene({
-        elements: [...elements, ...newElements],
+        elements: [...elements, ...elementsToAdd],
         captureUpdate: 'immediately',
       });
 
@@ -179,11 +200,15 @@ export default function App() {
         strokeStyle: params.strokeStyle ?? 'solid',
         startArrowhead: params.startArrowhead ?? null,
         endArrowhead: params.endArrowhead ?? 'arrow',
+        customData: params.customData,
       };
 
       const newElements = convertToExcalidrawElements([arrowSkeleton]);
+      const elementsToAdd = params.customData
+        ? newElements.map(el => ({ ...el, customData: params.customData }))
+        : newElements;
       api.updateScene({
-        elements: [...elements, ...newElements],
+        elements: [...elements, ...elementsToAdd],
         captureUpdate: 'immediately',
       });
 
@@ -220,11 +245,15 @@ export default function App() {
         strokeWidth: params.strokeWidth ?? 2,
         strokeStyle: params.strokeStyle ?? 'solid',
         fillStyle: params.fillStyle ?? 'solid',
+        customData: params.customData,
       };
 
       const newElements = convertToExcalidrawElements([polygonSkeleton]);
+      const elementsToAdd = params.customData
+        ? newElements.map(el => ({ ...el, customData: params.customData }))
+        : newElements;
       api.updateScene({
-        elements: [...elements, ...newElements],
+        elements: [...elements, ...elementsToAdd],
         captureUpdate: 'immediately',
       });
 
@@ -243,6 +272,16 @@ export default function App() {
     try {
       const elements = api.getSceneElements();
       const idsToDelete = new Set(params.elementIds);
+
+      // Also delete bound elements (labels) of shapes being deleted
+      for (const el of elements) {
+        if (idsToDelete.has(el.id) && el.boundElements) {
+          for (const bound of el.boundElements) {
+            idsToDelete.add(bound.id);
+          }
+        }
+      }
+
       let deletedCount = 0;
 
       const updatedElements = elements.map(e => {
@@ -438,9 +477,12 @@ export default function App() {
           groupIds: e.groupIds,
           text: e.text,
           fontSize: e.fontSize,
+          containerId: e.containerId,
+          boundElements: e.boundElements ? [...e.boundElements] : null,
           points: e.points,
           startArrowhead: e.startArrowhead,
           endArrowhead: e.endArrowhead,
+          customData: e.customData,
         }));
 
       return { type: 'readSceneResult', id, success: true, elements: sceneElements };

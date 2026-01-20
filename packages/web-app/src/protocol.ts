@@ -50,6 +50,7 @@ export interface AddShapeParams {
     verticalAlign?: 'top' | 'middle' | 'bottom';
     strokeColor?: string;
   };
+  customData?: Record<string, unknown>;
 }
 
 export interface AddShapeRequest {
@@ -77,6 +78,7 @@ export interface AddTextParams {
   fontSize?: number;
   textAlign?: 'left' | 'center' | 'right';
   strokeColor?: string;
+  customData?: Record<string, unknown>;
 }
 
 export interface AddTextRequest {
@@ -105,6 +107,7 @@ export interface AddLineParams {
   strokeColor?: string;
   strokeWidth?: number;
   strokeStyle?: 'solid' | 'dashed' | 'dotted';
+  customData?: Record<string, unknown>;
 }
 
 export interface AddLineRequest {
@@ -135,6 +138,7 @@ export interface AddArrowParams {
   strokeStyle?: 'solid' | 'dashed' | 'dotted';
   startArrowhead?: 'arrow' | 'bar' | 'dot' | 'triangle' | 'diamond' | 'none';
   endArrowhead?: 'arrow' | 'bar' | 'dot' | 'triangle' | 'diamond' | 'none';
+  customData?: Record<string, unknown>;
 }
 
 export interface AddArrowRequest {
@@ -162,6 +166,7 @@ export interface AddPolygonParams {
   strokeWidth?: number;
   strokeStyle?: 'solid' | 'dashed' | 'dotted';
   fillStyle?: 'hachure' | 'cross-hatch' | 'solid' | 'zigzag';
+  customData?: Record<string, unknown>;
 }
 
 export interface AddPolygonRequest {
@@ -294,6 +299,11 @@ export interface MoveElementsResponse {
 // Read Scene
 // ============================================================================
 
+export interface BoundElement {
+  id: string;
+  type: 'arrow' | 'text';
+}
+
 export interface SceneElement {
   id: string;
   type: string;
@@ -308,10 +318,15 @@ export interface SceneElement {
   // For text elements
   text?: string;
   fontSize?: number;
+  containerId?: string | null;
+  // For bindable elements (rectangle, ellipse, diamond, arrow, line)
+  boundElements?: BoundElement[] | null;
   // For line/arrow elements
   points?: number[][];
   startArrowhead?: string | null;
   endArrowhead?: string | null;
+  // Custom data
+  customData?: Record<string, unknown>;
 }
 
 export interface ReadSceneRequest {

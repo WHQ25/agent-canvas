@@ -85,27 +85,6 @@ export function connectToCanvas(timeout = 5000): Promise<WsClient> {
   });
 }
 
-export function isCanvasRunning(): Promise<boolean> {
-  return new Promise((resolve) => {
-    const ws = new WebSocket(WS_URL);
-    const timer = setTimeout(() => {
-      ws.close();
-      resolve(false);
-    }, 1000);
-
-    ws.on('open', () => {
-      clearTimeout(timer);
-      ws.close();
-      resolve(true);
-    });
-
-    ws.on('error', () => {
-      clearTimeout(timer);
-      resolve(false);
-    });
-  });
-}
-
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
 }
