@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.2.1"
+  version: "0.3.0"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -23,16 +23,16 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.2.1
+  bun add -g @agent-canvas/cli@0.3.0
   # or
-  npm install -g @agent-canvas/cli@0.2.1
+  npm install -g @agent-canvas/cli@0.3.0
   ```
 
-- **If installed but version differs from 0.2.1**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.2.1`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.2.1`
+- **If installed but version differs from 0.3.0**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.3.0`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.3.0`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.2.1
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.3.0
 
 ## Quick Start
 
@@ -81,7 +81,21 @@ All drawing commands share common style options:
 agent-canvas add-shape -t <type> -x <x> -y <y> [-w <width>] [-h <height>] [-l <label>]
 ```
 - Types: `rectangle`, `ellipse`, `diamond`
-- Use `-l/--label` to add text inside the shape (fontSize: S=16 by default), label text will appear in the center of the shape, consider potential element overlapping.
+- Use `-l/--label` to add text inside the shape (fontSize: 16 by default), `--label-font-size <n>` to adjust
+
+**Label Sizing**: If width is too small, text wraps; if height is too small after wrapping, shape auto-expands. To avoid unexpected resizing, calculate minimum dimensions:
+```
+Text dimensions (fontSize=16 by default):
+  textWidth ≈ charCount × fontSize × 0.6  (English/numbers)
+  textWidth ≈ charCount × fontSize        (CJK characters)
+  textHeight ≈ lineCount × fontSize × 1.35
+
+Minimum shape size (to prevent auto-expansion):
+  rectangle: width = textWidth + 20,  height = textHeight + 20
+  ellipse:   width = textWidth × 1.42 + 25,  height = textHeight × 1.42 + 25
+  diamond:   width = textWidth × 2 + 30,  height = textHeight × 2 + 30
+```
+**Tip**: For long labels in fixed-size shapes, manually insert `\n` to control line breaks. This ensures the shape dimensions match your design instead of being auto-expanded by Excalidraw.
 
 #### Lines & Arrows
 ```bash
@@ -89,6 +103,30 @@ agent-canvas add-line -x <x1> -y <y1> --end-x <x2> --end-y <y2>
 agent-canvas add-arrow -x <x1> -y <y1> --end-x <x2> --end-y <y2>
 ```
 - Arrow-specific: `--start-arrowhead`, `--end-arrowhead` (arrow, bar, dot, triangle, diamond, none)
+
+**Arrow Types** (`--arrow-type`):
+| Type | Description | Use Case |
+|------|-------------|----------|
+| `sharp` | Straight line (default) | Direct connections |
+| `round` | Curved line with control point | Organic flows, avoiding overlaps |
+| `elbow` | Right-angle turns (90°) | Flowcharts, circuit diagrams |
+
+**Intermediate Points** (`--via`):
+Use `--via` to specify intermediate points as absolute coordinates in format `"x1,y1;x2,y2;..."`:
+
+```bash
+# Round arrow: one control point determines curve direction
+# Vertical arrow curving left (control point at x=50, left of the line)
+agent-canvas add-arrow -x 100 -y 100 --end-x 100 --end-y 300 --arrow-type round --via "50,200"
+
+# Elbow arrow: multiple points for 90° turns
+# Loop back pattern: down → left → up (for flowchart iterations)
+agent-canvas add-arrow -x 175 -y 520 --end-x 175 --end-y 280 --arrow-type elbow --via "120,520;120,280"
+```
+
+**Tips**:
+- For `round`: curve bends toward the control point (offset from straight path)
+- For `elbow`: points define the corners of the 90° path
 
 #### Polygon
 ```bash
@@ -124,11 +162,13 @@ groups[N]{id,elementIds}                             # element groupings
 - `--with-style` adds `stroke`, `bg` fields
 - `--json` returns full Excalidraw format (use with `jq` to query specific elements)
 
-### Save and Export
+### Save, Export and Clear
 ```bash
 agent-canvas save file.excalidraw
 agent-canvas export -o out.png [--scale 2] [--dark] [--no-background]
+agent-canvas clear                # Clear all elements from the canvas
 ```
+**Note**: Before running `clear`, ask the user if they want to save or export the current canvas first.
 
 ## Design Philosophy
 

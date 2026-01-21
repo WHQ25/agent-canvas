@@ -6,6 +6,7 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
+    "dev:cli": "bun run --cwd packages/cli src/index.ts",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint"

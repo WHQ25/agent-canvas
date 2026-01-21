@@ -10,9 +10,9 @@ npm install -g @agent-canvas/cli
 
 ## Features
 
-- **Browser mode** (default): Opens Excalidraw in your browser
-- **Electron mode** (optional): Desktop app with `--app` flag
+- Opens Excalidraw in your browser
 - Full drawing capabilities: shapes, text, lines, arrows, polygons
+- Arrow types: sharp (straight), round (curved), elbow (90° turns)
 - Element manipulation: move, rotate, group, delete
 - File I/O: load and save .excalidraw files
 - PNG export with scale, dark mode, and embed scene options
@@ -22,12 +22,8 @@ npm install -g @agent-canvas/cli
 ### Start Canvas
 
 ```bash
-# Browser mode (default)
 agent-canvas start
-agent-canvas start -f diagram.excalidraw
-
-# Electron mode (requires @agent-canvas/electron-app)
-agent-canvas start --app
+agent-canvas start -f diagram.excalidraw  # Load existing file
 ```
 
 ### Drawing
@@ -44,6 +40,10 @@ agent-canvas add-text -t "Hello World" -x 100 -y 300 --font-size 24
 # Add lines and arrows
 agent-canvas add-line -x 100 -y 400 --end-x 300 --end-y 400
 agent-canvas add-arrow -x 100 -y 500 --end-x 300 --end-y 500
+
+# Arrow types: sharp (default), round, elbow
+agent-canvas add-arrow -x 100 -y 100 --end-x 100 --end-y 300 --arrow-type round --via "50,200"
+agent-canvas add-arrow -x 175 -y 520 --end-x 175 --end-y 280 --arrow-type elbow --via "120,520;120,280"
 
 # Add polygon
 agent-canvas add-polygon -p '[{"x":0,"y":0},{"x":100,"y":0},{"x":50,"y":100}]'
@@ -81,6 +81,9 @@ agent-canvas save diagram.excalidraw
 # Export to PNG
 agent-canvas export -o output.png
 agent-canvas export -o output.png --scale 2 --dark --no-background
+
+# Clear canvas
+agent-canvas clear
 ```
 
 ## License

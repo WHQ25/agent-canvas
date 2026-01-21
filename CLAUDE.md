@@ -37,7 +37,14 @@ bun run build
 
 # Type check
 bun run typecheck
+
+# Run CLI commands during development (use this instead of global `agent-canvas`)
+bun dev:cli <command>
+# Example: bun dev:cli start
+# Example: bun dev:cli add-shape -t rectangle -x 100 -y 100
 ```
+
+**Important**: When developing, always use `bun dev:cli` instead of the globally installed `agent-canvas` command. The global version is the published release and won't include your local changes.
 
 ## Architecture
 
@@ -80,15 +87,16 @@ Messages are defined in `cli/src/lib/protocol.ts` and follow a typed message pat
 - `agent-canvas read --json` - Read scene (JSON format)
 - `agent-canvas save <filepath>` - Save to .excalidraw file
 - `agent-canvas export -o <path>` - Export to PNG
+- `agent-canvas clear` - Clear all elements from the canvas
 
 ## Drawing Tips for Agents
 
 When drawing complex diagrams, chain commands with `&&` for efficiency:
 
 ```bash
-bun run dev add-shape -t rectangle -x 100 -y 100 -w 200 -h 100 -l "Box 1" && \
-bun run dev add-shape -t rectangle -x 100 -y 250 -w 200 -h 100 -l "Box 2" && \
-bun run dev add-arrow -x 200 -y 200 --end-x 200 --end-y 250
+bun dev:cli add-shape -t rectangle -x 100 -y 100 -w 200 -h 100 -l "Box 1" && \
+bun dev:cli add-shape -t rectangle -x 100 -y 250 -w 200 -h 100 -l "Box 2" && \
+bun dev:cli add-arrow -x 200 -y 200 --end-x 200 --end-y 250
 ```
 
 ## Key Files

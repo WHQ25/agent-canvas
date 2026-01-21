@@ -63,6 +63,11 @@ bun install
 # Build all packages
 bun run build
 
-# Run in dev mode
+# Run in dev mode (starts both web-app and CLI server)
 bun run dev
+
+# Run CLI commands during development
+bun dev:cli <command>
+# Example: bun dev:cli start
+# Example: bun dev:cli add-shape -t rectangle -x 100 -y 100
 ```

@@ -138,6 +138,11 @@ export interface AddArrowParams {
   strokeStyle?: 'solid' | 'dashed' | 'dotted';
   startArrowhead?: 'arrow' | 'bar' | 'dot' | 'triangle' | 'diamond' | 'none';
   endArrowhead?: 'arrow' | 'bar' | 'dot' | 'triangle' | 'diamond' | 'none';
+  arrowType?: 'sharp' | 'round' | 'elbow';
+  // Intermediate points (absolute coordinates)
+  // - For round arrows: one point as the curve control point
+  // - For elbow arrows: multiple points for 90-degree turns
+  midpoints?: Array<{ x: number; y: number }>;
   customData?: Record<string, unknown>;
 }
 

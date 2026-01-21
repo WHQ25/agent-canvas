@@ -17,6 +17,7 @@ import type {
   ReadSceneResponse,
   SaveSceneResponse,
   ExportImageResponse,
+  ClearCanvasResponse,
 } from './lib/protocol.js';
 
 const program = new Command();
@@ -24,7 +25,7 @@ const program = new Command();
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.2.1');
+  .version('0.3.0');
 
 program
   .command('start')
@@ -172,8 +173,19 @@ program
   .option('--stroke-style <style>', 'Arrow style: solid, dashed, or dotted')
   .option('--start-arrowhead <type>', 'Start arrowhead: arrow, bar, dot, triangle, diamond, none')
   .option('--end-arrowhead <type>', 'End arrowhead: arrow, bar, dot, triangle, diamond, none')
+  .option('--arrow-type <type>', 'Arrow type: sharp (straight), round (curved), elbow (90° angles)')
+  .option('--via <points>', 'Intermediate points as "x1,y1;x2,y2;..." (absolute coordinates). For round: 1 control point. For elbow: multiple turn points.')
   .option('-n, --note <text>', 'Note for this element (stored in customData)')
   .action(async (options) => {
+    // Parse --via option into midpoints array
+    let midpoints: Array<{ x: number; y: number }> | undefined;
+    if (options.via) {
+      midpoints = options.via.split(';').map((pt: string) => {
+        const [x, y] = pt.split(',').map(Number);
+        return { x, y };
+      });
+    }
+
     const client = await connectToCanvas();
     const result = await client.send<AddArrowResponse>({
       type: 'addArrow',
@@ -188,6 +200,8 @@ program
         strokeStyle: options.strokeStyle,
         startArrowhead: options.startArrowhead,
         endArrowhead: options.endArrowhead,
+        arrowType: options.arrowType,
+        midpoints,
         customData: options.note ? { note: options.note } : undefined,
       },
     });
@@ -603,6 +617,27 @@ program
       const outputPath = filepath.endsWith('.excalidraw') ? filepath : `${filepath}.excalidraw`;
       writeFileSync(outputPath, JSON.stringify(result.data, null, 2));
       console.log(`Saved to ${outputPath}`);
+    } else {
+      console.error(`Failed: ${result.error}`);
+      process.exit(1);
+    }
+    client.close();
+  });
+
+// ============================================================================
+// Clear Canvas
+// ============================================================================
+program
+  .command('clear')
+  .description('Clear all elements from the canvas')
+  .action(async () => {
+    const client = await connectToCanvas();
+    const result = await client.send<ClearCanvasResponse>({
+      type: 'clearCanvas',
+      id: generateId(),
+    });
+    if (result.success) {
+      console.log('Canvas cleared');
     } else {
       console.error(`Failed: ${result.error}`);
       process.exit(1);

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { Excalidraw, convertToExcalidrawElements, exportToBlob } from '@excalidraw/excalidraw';
+import { Excalidraw, convertToExcalidrawElements, exportToBlob, restoreElements } from '@excalidraw/excalidraw';
 
 const STORAGE_KEY = 'agent-canvas-scene';
 import type {
@@ -277,12 +277,101 @@ export default function App() {
 
     try {
       const elements = api.getSceneElements();
+      const dx = params.endX - params.x;
+      const dy = params.endY - params.y;
+
+      // Calculate points based on arrow type
+      let points: number[][];
+      if (params.arrowType === 'round') {
+        // Use custom midpoint if provided, otherwise default to middle point
+        if (params.midpoints && params.midpoints.length > 0) {
+          // Use first midpoint as the curve control point (relative coordinates)
+          const mid = params.midpoints[0];
+          points = [[0, 0], [mid.x - params.x, mid.y - params.y], [dx, dy]];
+        } else {
+          // Default: straight line (no curve)
+          points = [[0, 0], [dx / 2, dy / 2], [dx, dy]];
+        }
+      } else if (params.arrowType === 'elbow') {
+        // Use custom midpoints if provided, otherwise create default L-shape
+        if (params.midpoints && params.midpoints.length > 0) {
+          // Convert absolute coordinates to relative (from start point)
+          points = [[0, 0]];
+          for (const pt of params.midpoints) {
+            points.push([pt.x - params.x, pt.y - params.y]);
+          }
+          points.push([dx, dy]);
+        } else {
+          // Default: simple L-shape (horizontal first, then vertical)
+          points = [[0, 0], [dx, 0], [dx, dy]];
+        }
+      } else {
+        // Default straight line
+        points = [[0, 0], [dx, dy]];
+      }
+
+      // Calculate dimensions from points
+      const allX = points.map(p => p[0]);
+      const allY = points.map(p => p[1]);
+      const width = Math.max(...allX) - Math.min(...allX);
+      const height = Math.max(...allY) - Math.min(...allY);
+
+      // Use restoreElements for elbow/round arrows since it properly handles
+      // elbowed, roundness, and fixedSegments properties that convertToExcalidrawElements ignores
+      if (params.arrowType === 'elbow' || params.arrowType === 'round') {
+        const arrowId = Math.random().toString(36).substring(2, 15);
+
+        // Build the raw element that restoreElements expects
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawArrow: any = {
+          id: arrowId,
+          type: 'arrow',
+          x: params.x,
+          y: params.y,
+          width: width || Math.abs(dx),
+          height: height || Math.abs(dy),
+          points,
+          strokeColor: params.strokeColor ?? '#1e1e1e',
+          strokeWidth: params.strokeWidth ?? 2,
+          strokeStyle: params.strokeStyle ?? 'solid',
+          startArrowhead: params.startArrowhead ?? null,
+          endArrowhead: params.endArrowhead ?? 'arrow',
+          customData: params.customData,
+          // Arrow-specific defaults
+          startBinding: null,
+          endBinding: null,
+          lastCommittedPoint: null,
+        };
+
+        if (params.arrowType === 'round') {
+          rawArrow.roundness = { type: 2 };
+          rawArrow.elbowed = false;
+        } else if (params.arrowType === 'elbow') {
+          rawArrow.elbowed = true;
+          rawArrow.roundness = null;
+          rawArrow.fixedSegments = [];
+          rawArrow.startIsSpecial = false;
+          rawArrow.endIsSpecial = false;
+        }
+
+        // restoreElements properly handles elbowed and roundness properties
+        const restoredElements = restoreElements([rawArrow], null);
+
+        api.updateScene({
+          elements: [...elements, ...restoredElements],
+          captureUpdate: 'immediately',
+        });
+
+        return { type: 'addArrowResult', id, success: true, elementId: arrowId };
+      }
+
+      // For sharp (default) arrows, use convertToExcalidrawElements
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const arrowSkeleton: any = {
         type: 'arrow',
         x: params.x,
         y: params.y,
-        points: [[0, 0], [params.endX - params.x, params.endY - params.y]],
+        points,
         strokeColor: params.strokeColor ?? '#1e1e1e',
         strokeWidth: params.strokeWidth ?? 2,
         strokeStyle: params.strokeStyle ?? 'solid',
@@ -295,6 +384,7 @@ export default function App() {
       const elementsToAdd = params.customData
         ? newElements.map(el => ({ ...el, customData: params.customData }))
         : newElements;
+
       api.updateScene({
         elements: [...elements, ...elementsToAdd],
         captureUpdate: 'immediately',
@@ -627,6 +717,23 @@ export default function App() {
     }
   }, []);
 
+  const handleClearCanvas = useCallback((id: string) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'clearCanvasResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    try {
+      api.updateScene({
+        elements: [],
+        captureUpdate: 'immediately',
+      });
+      return { type: 'clearCanvasResult', id, success: true };
+    } catch (error) {
+      return { type: 'clearCanvasResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
   const handleExportImage = useCallback(async (id: string, params?: ExportImageParams) => {
     const api = excalidrawAPIRef.current;
     if (!api) {
@@ -702,6 +809,8 @@ export default function App() {
         return handleSaveScene(command.id);
       case 'exportImage':
         return await handleExportImage(command.id, command.params as ExportImageParams);
+      case 'clearCanvas':
+        return handleClearCanvas(command.id);
       default:
         return { type: 'error', id: command.id, success: false, error: `Unknown command: ${command.type}` };
     }
@@ -709,6 +818,7 @@ export default function App() {
     handleAddShape, handleAddText, handleAddLine, handleAddArrow, handleAddPolygon,
     handleDeleteElements, handleRotateElements, handleGroupElements, handleUngroupElement,
     handleMoveElements, handleReadScene, handleLoadScene, handleSaveScene, handleExportImage,
+    handleClearCanvas,
   ]);
 
   // WebSocket connection
