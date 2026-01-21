@@ -83,19 +83,23 @@ agent-canvas add-shape -t <type> -x <x> -y <y> [-w <width>] [-h <height>] [-l <l
 - Types: `rectangle`, `ellipse`, `diamond`
 - Use `-l/--label` to add text inside the shape (fontSize: 16 by default), `--label-font-size <n>` to adjust
 
-**Label Sizing**: If width is too small, text wraps; if height is too small after wrapping, shape auto-expands. To avoid unexpected resizing, calculate minimum dimensions:
+**Label Sizing - MUST calculate before drawing**:
+
+If shape size is too small for the label, Excalidraw auto-expands the shape, breaking your coordinate calculations for arrows. **You MUST use the formulas below to calculate minimum dimensions BEFORE drawing:**
+
 ```
-Text dimensions (fontSize=16 by default):
+Step 1: Calculate text dimensions (fontSize=16 by default)
   textWidth ≈ charCount × fontSize × 0.6  (English/numbers)
   textWidth ≈ charCount × fontSize        (CJK characters)
   textHeight ≈ lineCount × fontSize × 1.35
 
-Minimum shape size (to prevent auto-expansion):
+Step 2: Calculate minimum shape size
   rectangle: width = textWidth + 20,  height = textHeight + 20
   ellipse:   width = textWidth × 1.42 + 25,  height = textHeight × 1.42 + 25
   diamond:   width = textWidth × 2 + 30,  height = textHeight × 2 + 30
 ```
-**Tip**: For long labels in fixed-size shapes, manually insert `\n` to control line breaks. This ensures the shape dimensions match your design instead of being auto-expanded by Excalidraw.
+
+**Tip**: For long labels, manually insert `\n` to control line breaks, then recalculate dimensions based on the resulting line count.
 
 #### Lines & Arrows
 ```bash
