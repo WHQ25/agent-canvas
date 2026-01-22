@@ -127,8 +127,55 @@ skills/agent-canvas/
 
 ## Version Bump Checklist
 
-When releasing a new version, update these files:
-
+### CLI Version (when CLI code changes)
 1. `packages/cli/package.json` - version field
 2. `packages/cli/src/index.ts` - `.version('x.x.x')` (hardcoded)
-3. `skills/agent-canvas/SKILL.md` - metadata version field
+3. `skills/agent-canvas/SKILL.md` - Installation section (CLI version in install commands)
+
+### Skill Version (when SKILL.md or references change)
+1. `skills/agent-canvas/SKILL.md` - metadata `version` field only
+
+## Reference Tutorial Optimization Workflow
+
+When optimizing drawing tutorials in `skills/agent-canvas/references/`, use this iterative workflow:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. Read current tutorial                                   │
+│     - Read SKILL.md + references/<type>.md                  │
+└─────────────────────┬───────────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  2. Subagent test                                           │
+│     - Use Task tool to launch a subagent                    │
+│     - Subagent reads ONLY the docs, draws a test diagram    │
+│     - Subagent has isolated context (not polluted)          │
+│     - Ask subagent to report: commands executed, any issues │
+└─────────────────────┬───────────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  3. Evaluate result                                         │
+│     - Export PNG and visually inspect                       │
+│     - Check: alignment, colors, arrows, layout, aesthetics  │
+│     - Record issues found                                   │
+└─────────────────────┬───────────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  4. Optimize documentation                                  │
+│     - Update SKILL.md or references/<type>.md               │
+│     - Add rules, examples, or clarifications                │
+│     - Clear canvas, go back to step 2                       │
+└─────────────────────┬───────────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  5. Repeat until satisfied                                  │
+│     - Test with simple and complex diagrams                 │
+│     - Commit changes when quality is good                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key principles:**
+- Subagent isolation ensures unbiased testing (no prior context pollution)
+- Debug by asking subagent to report executed commands and size calculations
+- Use `agent-canvas read` to verify actual vs specified dimensions
+- Test both simple and complex scenarios before committing

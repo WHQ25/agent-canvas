@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.3.0"
+  version: "0.3.1"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -83,23 +83,34 @@ agent-canvas add-shape -t <type> -x <x> -y <y> [-w <width>] [-h <height>] [-l <l
 - Types: `rectangle`, `ellipse`, `diamond`
 - Use `-l/--label` to add text inside the shape (fontSize: 16 by default), `--label-font-size <n>` to adjust
 
-**Label Sizing - MUST calculate before drawing**:
+**⚠️ Label Sizing - CRITICAL: Calculate BEFORE drawing**
 
-If shape size is too small for the label, Excalidraw auto-expands the shape, breaking your coordinate calculations for arrows. **You MUST use the formulas below to calculate minimum dimensions BEFORE drawing:**
+If shape size is too small, Excalidraw auto-expands, breaking arrow coordinates. **You MUST:**
+1. Calculate minimum dimensions using the formulas below
+2. Use the calculated values directly — **NEVER estimate or use smaller values**
 
 ```
 Step 1: Calculate text dimensions (fontSize=16 by default)
-  textWidth ≈ charCount × fontSize × 0.6  (English/numbers)
-  textWidth ≈ charCount × fontSize        (CJK characters)
-  textHeight ≈ lineCount × fontSize × 1.35
+  textWidth = charCount × fontSize × 0.6  (English/numbers)
+  textWidth = charCount × fontSize        (CJK characters)
+  textHeight = lineCount × fontSize × 1.35
 
-Step 2: Calculate minimum shape size
-  rectangle: width = textWidth + 20,  height = textHeight + 20
-  ellipse:   width = textWidth × 1.42 + 25,  height = textHeight × 1.42 + 25
-  diamond:   width = textWidth × 2 + 30,  height = textHeight × 2 + 30
+Step 2: Calculate minimum shape size (use these values, not smaller!)
+  rectangle: width = textWidth + 50,  height = textHeight + 50
+  ellipse:   width = textWidth × 1.42 + 55,  height = textHeight × 1.42 + 55
+  diamond:   width = textWidth × 2 + 60,  height = textHeight × 2 + 60
 ```
 
-**Tip**: For long labels, manually insert `\n` to control line breaks, then recalculate dimensions based on the resulting line count.
+**Example**: Label "Message Queue" (13 chars) in ellipse
+```
+textWidth = 13 × 16 × 0.6 = 124.8
+textHeight = 1 × 16 × 1.35 = 21.6
+ellipse width = 124.8 × 1.42 + 55 = 232
+ellipse height = 21.6 × 1.42 + 55 = 86
+→ Use: -w 232 -h 86 (or round up to -w 240 -h 90)
+```
+
+**Tip**: For long labels, insert `\n` manually, then recalculate with updated lineCount.
 
 #### Lines & Arrows
 ```bash

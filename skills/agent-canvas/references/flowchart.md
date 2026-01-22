@@ -74,15 +74,6 @@ Decision points (diamonds) should **always use `--arrow-type elbow`** for branch
 - Exit from **left/right edges** of the diamond (NOT bottom)
 - Path goes **horizontal first**, then turns vertical down to target
 
-```
-        ◇ Decision
-       ╱ ╲
-   ←──╱   ╲──→   (horizontal first from side edges)
-     │     │
-     ↓     ↓     (then vertical down)
-   [Yes] [No]
-```
-
 **Coordinate calculation for diamond side edges:**
 ```
 Diamond at (x=140, y=250, w=120, h=80):
