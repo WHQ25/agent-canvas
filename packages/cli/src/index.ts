@@ -25,7 +25,7 @@ const program = new Command();
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.3.0');
+  .version('0.4.0');
 
 program
   .command('start')
@@ -74,7 +74,10 @@ program
     }
     const result = await client.send<AddShapeResponse>({ type: 'addShape', id: generateId(), params });
     if (result.success) {
-      console.log(`Shape created (id: ${result.elementId})`);
+      const dims = result.width !== undefined && result.height !== undefined
+        ? ` x=${result.x} y=${result.y} w=${result.width} h=${result.height}`
+        : '';
+      console.log(`Shape created (id: ${result.elementId}${dims})`);
     } else {
       console.error(`Failed: ${result.error}`);
       process.exit(1);
@@ -508,7 +511,10 @@ program
                 y: Math.round(el.y),
                 endX: Math.round(el.x + lastPt[0]),
                 endY: Math.round(el.y + lastPt[1]),
-                points: pts.length,
+                // Show intermediate points (via) in the same format as --via input
+                via: pts.length > 2
+                  ? pts.slice(1, -1).map(pt => `${Math.round(el.x + pt[0])},${Math.round(el.y + pt[1])}`).join(';')
+                  : null,
                 angle,
                 note: (el.customData as { note?: string } | undefined)?.note ?? null,
               };

@@ -64,6 +64,10 @@ export interface AddShapeResponse {
   id: string;
   success: boolean;
   elementId?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
   error?: string;
 }
 

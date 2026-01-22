@@ -193,7 +193,18 @@ export default function App() {
         captureUpdate: 'immediately',
       });
 
-      return { type: 'addShapeResult', id, success: true, elementId: newElements[0].id };
+      // Get the added element's actual dimensions (label may have adjusted the size)
+      const addedElement = api.getSceneElements().find(e => e.id === newElements[0].id);
+      return {
+        type: 'addShapeResult',
+        id,
+        success: true,
+        elementId: newElements[0].id,
+        x: Math.round(addedElement?.x ?? params.x),
+        y: Math.round(addedElement?.y ?? params.y),
+        width: addedElement?.width !== undefined ? Math.round(addedElement.width) : undefined,
+        height: addedElement?.height !== undefined ? Math.round(addedElement.height) : undefined,
+      };
     } catch (error) {
       return { type: 'addShapeResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
