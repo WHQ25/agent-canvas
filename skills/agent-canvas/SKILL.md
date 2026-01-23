@@ -23,16 +23,16 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.4.0
+  bun add -g @agent-canvas/cli@0.4.1
   # or
-  npm install -g @agent-canvas/cli@0.4.0
+  npm install -g @agent-canvas/cli@0.4.1
   ```
 
-- **If installed but version differs from 0.4.0**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.4.0`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.4.0`
+- **If installed but version differs from 0.4.1**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.4.1`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.4.1`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.4.0
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.4.1
 
 ## Quick Start
 

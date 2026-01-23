@@ -618,10 +618,32 @@ export default function App() {
 
     try {
       const elements = api.getSceneElements();
+      const idsToMove = new Set(params.elementIds);
+
+      // Also move bound elements (labels) of shapes being moved
+      for (const el of elements) {
+        if (idsToMove.has(el.id) && el.boundElements) {
+          for (const bound of el.boundElements) {
+            idsToMove.add(bound.id);
+          }
+        }
+      }
+
+      // Collect all group IDs from the target elements
+      const groupIds = new Set<string>();
+      elements.forEach(e => {
+        if (idsToMove.has(e.id) && e.groupIds?.length) {
+          e.groupIds.forEach(gid => groupIds.add(gid));
+        }
+      });
+
       let movedCount = 0;
 
       const updatedElements = elements.map(e => {
-        if (params.elementIds.includes(e.id)) {
+        const shouldMove = idsToMove.has(e.id) ||
+          (groupIds.size > 0 && e.groupIds?.some(gid => groupIds.has(gid)));
+
+        if (shouldMove) {
           movedCount++;
           return {
             ...e,
@@ -631,6 +653,10 @@ export default function App() {
         }
         return e;
       });
+
+      if (movedCount === 0) {
+        return { type: 'moveElementsResult', id, success: false, error: 'No elements found' };
+      }
 
       api.updateScene({
         elements: updatedElements,
