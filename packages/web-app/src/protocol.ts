@@ -75,12 +75,16 @@ export interface AddShapeResponse {
 // Add Text
 // ============================================================================
 
+// Alignment determines which point of the text bounding box the x,y coordinates refer to
+export type TextAnchor = 'topLeft' | 'topCenter' | 'topRight' | 'leftCenter' | 'center' | 'rightCenter' | 'bottomLeft' | 'bottomCenter' | 'bottomRight';
+
 export interface AddTextParams {
   text: string;
   x: number;
   y: number;
   fontSize?: number;
   textAlign?: 'left' | 'center' | 'right';
+  anchor?: TextAnchor;  // defaults to 'bottomLeft'
   strokeColor?: string;
   customData?: Record<string, unknown>;
 }
@@ -96,6 +100,10 @@ export interface AddTextResponse {
   id: string;
   success: boolean;
   elementId?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
   error?: string;
 }
 

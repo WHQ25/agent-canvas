@@ -25,7 +25,7 @@ const program = new Command();
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.4.1');
+  .version('0.5.0');
 
 program
   .command('start')
@@ -92,10 +92,11 @@ program
   .command('add-text')
   .description('Add text to the canvas')
   .requiredOption('-t, --text <text>', 'Text content (use \\n for newlines)')
-  .requiredOption('-x, --x <number>', 'X coordinate', parseFloat)
-  .requiredOption('-y, --y <number>', 'Y coordinate', parseFloat)
+  .requiredOption('--ax <number>', 'Anchor X coordinate', parseFloat)
+  .requiredOption('--ay <number>', 'Anchor Y coordinate', parseFloat)
   .option('--font-size <number>', 'Font size', parseFloat)
   .option('--text-align <align>', 'Text alignment: left, center, or right')
+  .option('-a, --anchor <anchor>', 'Anchor point: topLeft, topCenter, topRight, leftCenter, center, rightCenter, bottomLeft, bottomCenter, bottomRight')
   .option('--stroke-color <color>', 'Text color (hex)')
   .option('-n, --note <text>', 'Note for this element (stored in customData)')
   .action(async (options) => {
@@ -105,16 +106,17 @@ program
       id: generateId(),
       params: {
         text: options.text,
-        x: options.x,
-        y: options.y,
+        x: options.ax,
+        y: options.ay,
         fontSize: options.fontSize,
         textAlign: options.textAlign,
+        anchor: options.anchor,
         strokeColor: options.strokeColor,
         customData: options.note ? { note: options.note } : undefined,
       },
     });
     if (result.success) {
-      console.log(`Text created (id: ${result.elementId})`);
+      console.log(`Text created (id: ${result.elementId}, x: ${result.x}, y: ${result.y}, ${result.width}x${result.height})`);
     } else {
       console.error(`Failed: ${result.error}`);
       process.exit(1);

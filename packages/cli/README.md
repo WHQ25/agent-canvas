@@ -1,21 +1,25 @@
 # @agent-canvas/cli
 
-A CLI tool that provides an Excalidraw canvas interface for AI agents.
+CLI tool for drawing on Excalidraw canvas. Designed for AI agents but works great for humans too.
+
+Part of [Agent Canvas](https://github.com/WHQ25/agent-canvas) — an AI agent skill for drawing diagrams.
 
 ## Installation
 
 ```bash
 npm install -g @agent-canvas/cli
+# or
+bun add -g @agent-canvas/cli
 ```
 
 ## Features
 
-- Opens Excalidraw in your browser
-- Full drawing capabilities: shapes, text, lines, arrows, polygons
-- Arrow types: sharp (straight), round (curved), elbow (90° turns)
+- Real-time canvas in browser via WebSocket
+- Shapes: rectangle, ellipse, diamond, polygon
+- Text with 9 anchor points for precise positioning
+- Arrows: sharp, round (curved), elbow (90° turns)
 - Element manipulation: move, rotate, group, delete
-- File I/O: load and save .excalidraw files
-- PNG export with scale, dark mode, and embed scene options
+- Import/export: .excalidraw files, PNG export
 
 ## Usage
 
@@ -34,8 +38,10 @@ agent-canvas add-shape -t rectangle -x 100 -y 100 -w 200 -h 100 --background-col
 agent-canvas add-shape -t ellipse -x 300 -y 100 -w 100 -h 100
 agent-canvas add-shape -t diamond -x 500 -y 100 -w 100 -h 100
 
-# Add text
-agent-canvas add-text -t "Hello World" -x 100 -y 300 --font-size 24
+# Add text (--ax/--ay = anchor point, -a = anchor type)
+agent-canvas add-text -t "Hello World" --ax 100 --ay 300 --font-size 24
+agent-canvas add-text -t "Centered" --ax 200 --ay 250 -a center
+# Anchors: topLeft, topCenter, topRight, leftCenter, center, rightCenter, bottomLeft, bottomCenter (default), bottomRight
 
 # Add lines and arrows
 agent-canvas add-line -x 100 -y 400 --end-x 300 --end-y 400
@@ -85,7 +91,3 @@ agent-canvas export -o output.png --scale 2 --dark --no-background
 # Clear canvas
 agent-canvas clear
 ```
-
-## License
-
-MIT

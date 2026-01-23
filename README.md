@@ -1,6 +1,28 @@
 # Agent Canvas
 
-An AI agent skill for drawing diagrams, flowcharts, and visualizations. Give your agents an Excalidraw canvas and see what they can do!
+An AI agent skill for drawing diagrams, flowcharts, and visualizations on Excalidraw.
+
+## Features
+
+🔌 **Works with any AI agent** — Claude Code, Codex, Cursor, or any agent that supports skills.
+
+🧠 **Context-aware** — Unlike web-based drawing tools, your agent sees your entire codebase. Ask it to "draw the architecture of this project" and it will analyze your code structure to generate accurate diagrams.
+
+⚡ **Token efficient** — CLI commands instead of generating `.excalidraw` JSON (thousands of tokens per element):
+
+```bash
+# JSON approach: 500+ tokens per shape
+# CLI approach: ~50 tokens
+agent-canvas add-shape -t rectangle -x 100 -y 100 -l "Hello"
+```
+
+🔄 **Real-time & iterative** — See changes instantly in browser. Refine diagrams through natural conversation: *"make the boxes blue"*, *"add a database layer"*.
+
+👀 **Bidirectional** — Agent can export and view the canvas anytime. Make manual edits in Excalidraw, then ask the agent to continue — no screenshots needed.
+
+📦 **Easy setup** — Skill automatically installs and updates the CLI. Just start drawing.
+
+🧩 **Extensible** — Add custom drawing tutorials in `references/` to teach your agent domain-specific diagram styles.
 
 ## Installation
 
@@ -17,11 +39,59 @@ After installation, just ask your agent to draw something:
 
 ## How It Works
 
-The skill teaches AI agents how to use the `@agent-canvas/cli` tool to draw on an Excalidraw canvas in your browser.
+1. `agent-canvas start` opens a local Excalidraw canvas in your browser
+2. CLI sends drawing commands via WebSocket, canvas updates in real-time
+3. You and your agent collaborate on the same canvas
 
+```mermaid
+flowchart LR
+    A[You] -->|natural language| B[AI Agent]
+    A -->|edit directly| D
+    B -->|CLI commands| C[CLI Server]
+    B -.->|reads| E[Codebase +\nSkill tutorials]
+    C <-->|WebSocket| D[Browser\nExcalidraw]
 ```
-You → AI Agent → agent-canvas CLI → Browser (Excalidraw)
-```
+
+## Examples
+
+### Sequence Diagram
+
+**Prompt:**
+> Draw a sequence diagram for WeChat OAuth login flow
+
+**Output:**
+
+![OAuth Sequence Diagram](assets/oauth-sequence-diagram.png)
+
+### Flowchart with Iterative Refinement
+
+**Prompt 1:**
+> Draw a flowchart for the add-text command processing flow
+
+**Prompt 2 (refining):**
+> Show all 9 anchor types in a grid, use dashed rectangle to group them
+
+**Output:**
+
+![add-text Command Flow](assets/add-text-flowchart.png)
+
+### Architecture Diagram
+
+**Prompt:**
+> Draw an architecture diagram for the Excalidraw project based on its codebase structure
+
+**Output:**
+
+![Excalidraw Architecture](assets/excalidraw-architecture.png)
+
+### UI Mockup
+
+**Prompt:**
+> Design an e-commerce app with product detail, shopping cart, and checkout pages
+
+**Output:**
+
+![E-Commerce UI](assets/ecommerce-ui.png)
 
 ## CLI Installation
 
@@ -30,14 +100,6 @@ The skill will guide the agent to install the CLI automatically. You can also in
 ```bash
 npm install -g @agent-canvas/cli
 ```
-
-## Features
-
-- **Browser-based**: Opens Excalidraw in your browser
-- **Full drawing capabilities**: shapes, text, lines, arrows, polygons
-- **Element manipulation**: move, rotate, group, delete
-- **File I/O**: load and save .excalidraw files
-- **PNG export**: with scale, dark mode, and embed scene options
 
 ## Contributing
 

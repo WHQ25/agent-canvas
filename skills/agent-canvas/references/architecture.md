@@ -43,6 +43,7 @@ Layer 2: Routing/API layer (optional)
 Layer 3: Services/Business logic
 Layer 4: Data layer (databases, caches)
 ```
+Wrap each layer with dashed rect, all layer rect should have same width and put a layer name text to the right of of the layer rect.
 
 ### Alignment is Everything
 - Components in the same layer should share the same Y coordinate

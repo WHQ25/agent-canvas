@@ -218,12 +218,13 @@ export default function App() {
 
     try {
       const elements = api.getSceneElements();
+      // First create with temporary position to get actual dimensions
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const textSkeleton: any = {
         type: 'text',
         text: params.text.replace(/\\n/g, '\n'),
-        x: params.x,
-        y: params.y,
+        x: 0,  // temporary position
+        y: 0,
         fontSize: params.fontSize ?? 20,
         textAlign: params.textAlign ?? 'left',
         strokeColor: params.strokeColor ?? '#1e1e1e',
@@ -231,15 +232,55 @@ export default function App() {
       };
 
       const newElements = convertToExcalidrawElements([textSkeleton]);
-      const elementsToAdd = params.customData
-        ? newElements.map(el => ({ ...el, customData: params.customData }))
-        : newElements;
+      const textElement = newElements[0] as ExcalidrawElement;
+      const width = textElement.width ?? 0;
+      const height = textElement.height ?? 0;
+
+      // Calculate position offset based on anchor
+      let offsetX = 0;
+      let offsetY = 0;
+      const anchor = params.anchor ?? 'bottomLeft';
+
+      // Horizontal offset
+      if (anchor === 'topCenter' || anchor === 'center' || anchor === 'bottomCenter') {
+        offsetX = -width / 2;
+      } else if (anchor === 'topRight' || anchor === 'rightCenter' || anchor === 'bottomRight') {
+        offsetX = -width;
+      }
+      // Vertical offset
+      if (anchor === 'leftCenter' || anchor === 'center' || anchor === 'rightCenter') {
+        offsetY = -height / 2;
+      } else if (anchor === 'bottomLeft' || anchor === 'bottomCenter' || anchor === 'bottomRight') {
+        offsetY = -height;
+      }
+
+      // Apply the offset to get final position
+      const finalX = params.x + offsetX;
+      const finalY = params.y + offsetY;
+
+      // Update element with final position
+      const elementsToAdd = newElements.map(el => ({
+        ...el,
+        x: (el as ExcalidrawElement).x + finalX,
+        y: (el as ExcalidrawElement).y + finalY,
+        customData: params.customData,
+      }));
+
       api.updateScene({
         elements: [...elements, ...elementsToAdd],
         captureUpdate: 'immediately',
       });
 
-      return { type: 'addTextResult', id, success: true, elementId: newElements[0].id };
+      return {
+        type: 'addTextResult',
+        id,
+        success: true,
+        elementId: textElement.id,
+        x: Math.round(finalX),
+        y: Math.round(finalY),
+        width: Math.round(width),
+        height: Math.round(height),
+      };
     } catch (error) {
       return { type: 'addTextResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }

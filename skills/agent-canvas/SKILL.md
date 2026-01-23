@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.4.0"
+  version: "0.5.0"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -23,16 +23,16 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.4.1
+  bun add -g @agent-canvas/cli@0.5.0
   # or
-  npm install -g @agent-canvas/cli@0.4.1
+  npm install -g @agent-canvas/cli@0.5.0
   ```
 
-- **If installed but version differs from 0.4.1**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.4.1`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.4.1`
+- **If installed but version differs from 0.5.0**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.5.0`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.5.0`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.4.1
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.5.0
 
 ## Quick Start
 
@@ -53,10 +53,20 @@ agent-canvas start -f file.excalidraw # Load existing file on start
 
 ### Add Text
 ```bash
-agent-canvas add-text -t "<text>" -x <x> -y <y> [options]
+agent-canvas add-text -t "<text>" --ax <x> --ay <y> [options]
 ```
-- Options: `--font-size <size>`, `--text-align <left|center|right>`, `--stroke-color <hex>`, `-n/--note <text>`
+- Options: `--font-size <size>`, `--text-align <left|center|right>`, `-a/--anchor <anchor>`, `--stroke-color <hex>`, `-n/--note <text>`
 - Font sizes: S=16, M=20 (default), L=28, XL=36
+- **Anchor** (`-a`): Controls which point of the text bounding box the anchor coordinates (--ax, --ay) refer to:
+  ```
+  topLeft ────── topCenter ────── topRight
+      │                               │
+  leftCenter ────── center ────── rightCenter
+      │                               │
+  bottomLeft ── bottomCenter ── bottomRight
+  ```
+  Default: `bottomLeft` (text flows right and up from anchor point). Use `center` to place text centered on a point, `topCenter` for text below a point, etc.
+- Returns: `Text created (id: <id>, x: <x>, y: <y>, <width>x<height>)` — actual top-left position and dimensions for precise layout
 
 ### Add Drawing Elements
 
@@ -212,7 +222,7 @@ Core principles:
    - `export -o canvas.png` + view image - For visual/spatial understanding
    - `read --json | jq '.elements[] | select(.id=="<id>")'` - Query specific element details
 
-4. **Batch Commands**: Chain with `&&` for efficiency. Do NOT use `#` comments in chains.
+4. **Batch Commands**: Chain with `&&` for efficiency. DO NOT WRITE BASH COMMENT IN DRAWING COMMANDS
    ```bash
    agent-canvas add-shape -t rectangle -x 100 -y 100 -l "A" && \
    agent-canvas add-shape -t rectangle -x 300 -y 100 -l "B" && \
