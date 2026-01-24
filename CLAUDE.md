@@ -44,7 +44,35 @@ bun dev:cli <command>
 # Example: bun dev:cli add-shape -t rectangle -x 100 -y 100
 ```
 
-**Important**: When developing, always use `bun dev:cli` instead of the globally installed `agent-canvas` command. The global version is the published release and won't include your local changes.
+**Important**: When developing, always use `bun dev:cli` or `agent-canvas-dev` instead of the globally installed `agent-canvas` command. The global version is the published release and won't include your local changes.
+
+## Development Version (agent-canvas-dev)
+
+For convenient development, you can link a `agent-canvas-dev` command that points to your local development version, while keeping the production `agent-canvas` intact.
+
+```bash
+# Link development version (from packages/cli directory)
+cd packages/cli
+bun run link:dev    # Creates agent-canvas-dev symlink
+
+# Now you can use:
+agent-canvas-dev start           # Uses local development code
+agent-canvas      start           # Uses globally installed production version
+
+# Unlink when done
+bun run unlink:dev
+```
+
+**Benefits:**
+- Test local changes without affecting production CLI
+- No need to reinstall global package after each change
+- Both versions can coexist
+
+**Workflow:**
+1. Make code changes in `packages/web-app/src/` or `packages/cli/src/`
+2. Run `bun run build` to rebuild
+3. Restart `agent-canvas-dev start` and refresh browser
+4. Test your changes
 
 ## Architecture
 

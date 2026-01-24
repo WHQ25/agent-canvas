@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.5.0"
+  version: "0.5.1"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -23,16 +23,16 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.5.0
+  bun add -g @agent-canvas/cli@0.5.1
   # or
-  npm install -g @agent-canvas/cli@0.5.0
+  npm install -g @agent-canvas/cli@0.5.1
   ```
 
-- **If installed but version differs from 0.5.0**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.5.0`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.5.0`
+- **If installed but version differs from 0.5.1**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.5.1`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.5.1`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.5.0
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.5.1
 
 ## Quick Start
 
@@ -213,6 +213,8 @@ Core principles:
 1. **Coordinates**: Origin (0,0) is top-left. X→right, Y→down. Colors in hex (`#FF5733`) or `transparent`.
 
 2. **Workflow**: Read canvas → Plan layout → Draw shapes FIRST → Then add arrows/lines.
+   - **IMPORTANT**: Canvas content is auto-saved to browser localStorage. Always run `agent-canvas read` first to check for existing content before drawing.
+   - If old content exists, ask the user whether to: (a) continue editing, (b) clear and start fresh, or (c) save/export first then clear.
    - Shapes define the layout and provide exact coordinates
    - Arrow endpoints depend on shape positions — drawing arrows first leads to misalignment
 

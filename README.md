@@ -132,4 +132,11 @@ bun run dev
 bun dev:cli <command>
 # Example: bun dev:cli start
 # Example: bun dev:cli add-shape -t rectangle -x 100 -y 100
+
+# Or link a development version alongside production
+cd packages/cli
+bun run link:dev      # Creates global `agent-canvas-dev` command
+bun run unlink:dev    # Removes the link
 ```
+
+Using `agent-canvas-dev` lets you test local changes while keeping the production `agent-canvas` intact.

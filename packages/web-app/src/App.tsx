@@ -258,11 +258,11 @@ export default function App() {
       const finalX = params.x + offsetX;
       const finalY = params.y + offsetY;
 
-      // Update element with final position
+      // Update element with final position (use finalX/Y directly, not as offset)
       const elementsToAdd = newElements.map(el => ({
         ...el,
-        x: (el as ExcalidrawElement).x + finalX,
-        y: (el as ExcalidrawElement).y + finalY,
+        x: finalX,
+        y: finalY,
         customData: params.customData,
       }));
 
