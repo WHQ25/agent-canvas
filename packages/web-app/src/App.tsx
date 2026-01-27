@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { Excalidraw, convertToExcalidrawElements, exportToBlob, restoreElements } from '@excalidraw/excalidraw';
+import { Excalidraw, convertToExcalidrawElements, exportToBlob, restoreElements, CaptureUpdateAction } from '@excalidraw/excalidraw';
 
 const STORAGE_KEY = 'agent-canvas-scene';
 import type {
@@ -54,7 +54,7 @@ interface ExcalidrawAPI {
   updateScene: (scene: {
     elements?: readonly unknown[];
     appState?: unknown;
-    captureUpdate?: 'immediately' | 'eventually' | 'none';
+    captureUpdate?: 'IMMEDIATELY' | 'EVENTUALLY' | 'NEVER';
   }) => void;
 }
 
@@ -190,7 +190,7 @@ export default function App() {
         : newElements;
       api.updateScene({
         elements: [...elements, ...elementsToAdd],
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       // Get the added element's actual dimensions (label may have adjusted the size)
@@ -268,7 +268,7 @@ export default function App() {
 
       api.updateScene({
         elements: [...elements, ...elementsToAdd],
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       return {
@@ -312,7 +312,7 @@ export default function App() {
         : newElements;
       api.updateScene({
         elements: [...elements, ...elementsToAdd],
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       return { type: 'addLineResult', id, success: true, elementId: newElements[0].id };
@@ -411,7 +411,7 @@ export default function App() {
 
         api.updateScene({
           elements: [...elements, ...restoredElements],
-          captureUpdate: 'immediately',
+          captureUpdate: CaptureUpdateAction.IMMEDIATELY,
         });
 
         return { type: 'addArrowResult', id, success: true, elementId: arrowId };
@@ -439,7 +439,7 @@ export default function App() {
 
       api.updateScene({
         elements: [...elements, ...elementsToAdd],
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       return { type: 'addArrowResult', id, success: true, elementId: newElements[0].id };
@@ -484,7 +484,7 @@ export default function App() {
         : newElements;
       api.updateScene({
         elements: [...elements, ...elementsToAdd],
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       return { type: 'addPolygonResult', id, success: true, elementId: newElements[0].id };
@@ -528,7 +528,7 @@ export default function App() {
 
       api.updateScene({
         elements: updatedElements,
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       return { type: 'deleteElementsResult', id, success: true, deletedCount };
@@ -574,7 +574,7 @@ export default function App() {
 
       api.updateScene({
         elements: updatedElements,
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       return { type: 'rotateElementsResult', id, success: true, rotatedCount };
@@ -606,7 +606,7 @@ export default function App() {
 
       api.updateScene({
         elements: updatedElements,
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       return { type: 'groupElementsResult', id, success: true, groupId: newGroupId };
@@ -642,7 +642,7 @@ export default function App() {
 
       api.updateScene({
         elements: updatedElements,
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       return { type: 'ungroupElementResult', id, success: true };
@@ -701,7 +701,7 @@ export default function App() {
 
       api.updateScene({
         elements: updatedElements,
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       return { type: 'moveElementsResult', id, success: true, movedCount };
@@ -757,7 +757,7 @@ export default function App() {
       const elements = params.elements || [];
       api.updateScene({
         elements: elements as readonly unknown[],
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
       return { type: 'loadSceneResult', id, success: true, elementCount: elements.length };
@@ -804,7 +804,7 @@ export default function App() {
     try {
       api.updateScene({
         elements: [],
-        captureUpdate: 'immediately',
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
       return { type: 'clearCanvasResult', id, success: true };
     } catch (error) {

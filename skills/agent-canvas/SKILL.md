@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.5.1"
+  version: "0.6.0"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -23,14 +23,14 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.5.1
+  bun add -g @agent-canvas/cli@0.6.0
   # or
-  npm install -g @agent-canvas/cli@0.5.1
+  npm install -g @agent-canvas/cli@0.6.0
   ```
 
 - **If installed but version differs from 0.5.1**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.5.1`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.5.1`
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.6.0`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.6.0`
 
 - **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.5.1
 
@@ -50,6 +50,7 @@ which agent-canvas && agent-canvas --version
 agent-canvas start                    # Start server and open browser
 agent-canvas start -f file.excalidraw # Load existing file on start
 ```
+**When loading from file (`-f`)**: Remember the file path and save back to it with `agent-canvas save <original-file>`.
 
 ### Add Text
 ```bash
