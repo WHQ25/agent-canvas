@@ -27,7 +27,7 @@ agent-canvas add-shape -t rectangle -x 100 -y 100 -l "Hello"
 ## Installation
 
 ```bash
-npx add-skill WHQ25/agent-canvas --skill agent-canvas
+npx skills add WHQ25/agent-canvas --skill agent-canvas
 ```
 
 This installs the skill to your AI coding agent (Claude Code, Codex, Cursor, etc.).
