@@ -46,9 +46,34 @@ Layer 4: Data layer (databases, caches)
 Wrap each layer with dashed rect, all layer rect should have same width and put a layer name text to the right of of the layer rect.
 
 ### Alignment is Everything
-- Components in the same layer should share the same Y coordinate
-- Related components (service + its database) should share the same X coordinate
-- Use consistent spacing between components in the same layer
+- Components in the same layer should share the same Y coordinate (align by vertical center)
+- Related components (service + its database) should share the same X coordinate (align by horizontal center)
+
+### Layer Layout (like CSS flexbox)
+Within each layer, elements should **fill the available width evenly**:
+
+```
+Given: layer width = W, element count = n, gap = g (e.g., 20px), padding = p (e.g., 15px)
+Inner width = W - 2 × p
+Element width = (inner_width - (n-1) × g) / n
+```
+
+**Example**: 4 services in a 800px layer, gap=20px, padding=15px:
+- Inner width = 800 - 2×15 = 770px
+- Element width = (770 - 3×20) / 4 = 177px
+
+**Single element (n = 1)**: Element spans full layer width (width = W), no boundary box needed.
+
+**Multiple elements (n > 1)**: Wrap them with a dashed rect boundary box:
+- Box width = W (full layer width)
+- Box height = element_height + 2 × padding
+- Elements start at x = layer_x + padding
+
+This ensures:
+- All elements in a layer have **identical width**
+- **Equal spacing** between elements
+- Elements **fill the entire layer width**
+- Clear visual grouping with boundary box
 
 ## The Position-First Principle
 

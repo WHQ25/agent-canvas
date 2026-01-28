@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.6.0"
+  version: "0.7.0"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -28,11 +28,11 @@ which agent-canvas && agent-canvas --version
   npm install -g @agent-canvas/cli@0.6.0
   ```
 
-- **If installed but version differs from 0.5.1**: Upgrade using the same package manager:
+- **If installed but version differs from 0.6.0**: Upgrade using the same package manager:
   - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.6.0`
   - Otherwise → `npm install -g @agent-canvas/cli@0.6.0`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.5.1
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.6.0
 
 ## Quick Start
 
@@ -58,15 +58,20 @@ agent-canvas add-text -t "<text>" --ax <x> --ay <y> [options]
 ```
 - Options: `--font-size <size>`, `--text-align <left|center|right>`, `-a/--anchor <anchor>`, `--stroke-color <hex>`, `-n/--note <text>`
 - Font sizes: S=16, M=20 (default), L=28, XL=36
-- **Anchor** (`-a`): Controls which point of the text bounding box the anchor coordinates (--ax, --ay) refer to:
-  ```
-  topLeft ────── topCenter ────── topRight
-      │                               │
-  leftCenter ────── center ────── rightCenter
-      │                               │
-  bottomLeft ── bottomCenter ── bottomRight
-  ```
-  Default: `bottomLeft` (text flows right and up from anchor point). Use `center` to place text centered on a point, `topCenter` for text below a point, etc.
+- **Anchor** (`-a`): Since text size is unknown until rendered, anchor gives you precise positioning control by specifying which point of the text bounding box aligns to (--ax, --ay). Default: `bottomLeft`.
+
+  | Anchor | Common Text Types |
+  |--------|-------------------|
+  | `topLeft` | Badge, Tag, Icon label |
+  | `topCenter` | Subtitle, Description below shape |
+  | `topRight` | Timestamp, Version, Status |
+  | `leftCenter` | Side annotation (right of shape) |
+  | `center` | Centered title, Main label |
+  | `rightCenter` | Side annotation (left of shape) |
+  | `bottomLeft` | Footnote, Note |
+  | `bottomCenter` | Title, Header above shape |
+  | `bottomRight` | Footnote, Signature |
+
 - Returns: `Text created (id: <id>, x: <x>, y: <y>, <width>x<height>)` — actual top-left position and dimensions for precise layout
 
 ### Add Drawing Elements
@@ -202,22 +207,37 @@ agent-canvas clear                # Clear all elements from the canvas
 
 **You are a perfectionist. If it looks slightly off, it IS off. Fix it.**
 
-Core principles:
-- **Alignment**: Snap to grid (e.g., 50px units). Same X for vertical alignment, same Y for horizontal
-- **Spacing**: Identical gaps between same-level elements; consistent margins throughout
-- **Color**: Max 3-4 colors; same color = same meaning; less is more
-- **Size**: Same-type nodes share identical dimensions; important = larger
-- **Details**: Arrows connect precisely to shape edges; review via `export` and fix imperfections
+**Core principle: Consistency reflects meaning.**
+
+- **Same relationship → Same alignment & spacing**
+  - Elements with the same relationship should share identical alignment
+  - Gaps between same-level elements should be equal throughout
+  - Snap to grid (e.g., 10px units) for precision
+
+- **Same type → Same color & size**
+  - Same-type nodes share identical dimensions
+  - Same color = same meaning; max 3-4 colors; less is more
+  - Important elements = larger size
+
+- **Details matter**
+  - Arrows connect precisely to shape edges
+  - Review via `export` and fix any imperfections
 
 ## IMPERATIVE GUIDE
 
 1. **Coordinates**: Origin (0,0) is top-left. X→right, Y→down. Colors in hex (`#FF5733`) or `transparent`.
 
-2. **Workflow**: Read canvas → Plan layout → Draw shapes FIRST → Then add arrows/lines.
+2. **Workflow**: Read canvas → Plan layout → Draw shapes → Add arrows/lines → **Adjust**.
    - **IMPORTANT**: Canvas content is auto-saved to browser localStorage. Always run `agent-canvas read` first to check for existing content before drawing.
    - If old content exists, ask the user whether to: (a) continue editing, (b) clear and start fresh, or (c) save/export first then clear.
    - Shapes define the layout and provide exact coordinates
    - Arrow endpoints depend on shape positions — drawing arrows first leads to misalignment
+   - **Adjust**: After initial draft, run `read` and `export` to review. Check against Design Philosophy:
+     - Alignment issues? → `move-elements` to snap to grid
+     - Inconsistent spacing? → `move-elements` to equalize gaps
+     - Overlapping elements? → `move-elements` or `delete-elements`
+     - Wrong sizes? → `delete-elements` and redraw
+     - Misaligned arrows? → `delete-elements` and redraw with correct endpoints
 
 3. **Progressive Canvas Reading**:
    - `read` - Start here. Compact TOON format (~7% of JSON size)
