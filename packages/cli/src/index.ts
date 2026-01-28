@@ -593,6 +593,12 @@ program
         }));
 
         console.log(toToon({ shapes, lines, labels, texts, groups }));
+
+        // Output selected elements
+        const selectedIds = result.selectedElementIds ?? [];
+        if (selectedIds.length > 0) {
+          console.log(`\nSelected: ${selectedIds.join(', ')}`);
+        }
     } else {
       console.error(`Failed: ${result.error}`);
       process.exit(1);

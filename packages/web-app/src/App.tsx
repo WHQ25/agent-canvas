@@ -904,6 +904,7 @@ export default function App() {
 
     try {
       const elements = api.getSceneElements();
+      const appState = api.getAppState() as { selectedElementIds?: Record<string, true> };
       const sceneElements: SceneElement[] = elements
         .filter(e => !e.isDeleted)
         .map(e => ({
@@ -927,7 +928,12 @@ export default function App() {
           customData: e.customData,
         }));
 
-      return { type: 'readSceneResult', id, success: true, elements: sceneElements };
+      // Extract selected element IDs
+      const selectedElementIds = appState.selectedElementIds
+        ? Object.keys(appState.selectedElementIds)
+        : [];
+
+      return { type: 'readSceneResult', id, success: true, elements: sceneElements, selectedElementIds };
     } catch (error) {
       return { type: 'readSceneResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }

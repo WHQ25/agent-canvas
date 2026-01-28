@@ -282,6 +282,7 @@ export interface ReadSceneResponse {
   id: string;
   success: boolean;
   elements?: SceneElement[];
+  selectedElementIds?: string[];
   error?: string;
 }
 
