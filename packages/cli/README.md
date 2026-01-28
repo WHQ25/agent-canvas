@@ -18,7 +18,7 @@ bun add -g @agent-canvas/cli
 - Shapes: rectangle, ellipse, diamond, polygon
 - Text with 9 anchor points for precise positioning
 - Arrows: sharp, round (curved), elbow (90° turns)
-- Element manipulation: move, rotate, group, delete
+- Element manipulation: move, rotate, resize, group, delete
 - Import/export: .excalidraw files, PNG export
 
 ## Usage
@@ -66,6 +66,11 @@ agent-canvas rotate-elements -i <id1>,<id2> -a 45
 
 # Move elements
 agent-canvas move-elements -i <id1>,<id2> --delta-x 50 --delta-y 100
+
+# Resize shapes (expand/contract edges)
+agent-canvas resize-elements -i <id> --bottom 50              # Expand bottom by 50px
+agent-canvas resize-elements -i <id> --right 30 --bottom 20   # Expand right-bottom corner
+agent-canvas resize-elements -i <id> --left -20               # Contract left edge by 20px
 
 # Group/ungroup
 agent-canvas group-elements -i <id1>,<id2>,<id3>

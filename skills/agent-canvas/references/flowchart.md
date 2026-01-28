@@ -61,6 +61,26 @@ Example (spacing=100, width=120):
 
 ## Arrow Types for Flowcharts
 
+### Arrow Direction Principle (IMPORTANT)
+**Arrows should be strictly horizontal or vertical whenever possible.** Before adding arrows:
+
+1. **Adjust node positions** to align edges so arrows can be straight (horizontal or vertical)
+2. **Avoid diagonal arrows** - they look messy and are harder to follow
+3. **Never use `--arrow-type curve`** unless absolutely necessary (e.g., crossing multiple elements with no other option)
+4. **Prefer `elbow` arrows** for connections that require direction change - they maintain the horizontal/vertical aesthetic
+
+```
+Good:                           Bad:
+┌───┐                          ┌───┐
+│ A │                          │ A │
+└─┬─┘                          └───┘
+  │ (vertical)                    ╲ (diagonal)
+  ↓                                ╲
+┌───┐                              ┌───┐
+│ B │                              │ B │
+└───┘                              └───┘
+```
+
 ### Elbow Arrow Direction Rules
 Elbow arrows (`--arrow-type elbow`) follow a consistent path pattern based on exit direction:
 
@@ -165,6 +185,8 @@ agent-canvas add-arrow -x 400 -y 450 --end-x 320 --end-y 500 --arrow-type elbow 
 ## Tips
 
 - Draw shapes first, arrows second
+- **Align nodes before adding arrows** - adjust positions so arrows can be strictly horizontal or vertical
 - Keep flows vertical when possible (top to bottom)
+- **Avoid curve arrows** - use elbow arrows for direction changes instead
 - Label decision branches (Yes/No) using text if needed
 - Use consistent spacing for visual balance

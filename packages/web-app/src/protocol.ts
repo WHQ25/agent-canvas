@@ -313,6 +313,32 @@ export interface MoveElementsResponse {
 }
 
 // ============================================================================
+// Resize Elements
+// ============================================================================
+
+export interface ResizeElementsParams {
+  elementIds: string[];
+  top?: number;     // Positive = expand upward (in element's local coordinate system)
+  bottom?: number;  // Positive = expand downward
+  left?: number;    // Positive = expand leftward
+  right?: number;   // Positive = expand rightward
+}
+
+export interface ResizeElementsRequest {
+  type: 'resizeElements';
+  id: string;
+  params: ResizeElementsParams;
+}
+
+export interface ResizeElementsResponse {
+  type: 'resizeElementsResult';
+  id: string;
+  success: boolean;
+  resizedCount?: number;
+  error?: string;
+}
+
+// ============================================================================
 // Read Scene
 // ============================================================================
 
@@ -448,6 +474,7 @@ export type RequestMessage =
   | GroupElementsRequest
   | UngroupElementRequest
   | MoveElementsRequest
+  | ResizeElementsRequest
   | ReadSceneRequest
   | LoadSceneRequest
   | SaveSceneRequest
@@ -465,6 +492,7 @@ export type ResponseMessage =
   | GroupElementsResponse
   | UngroupElementResponse
   | MoveElementsResponse
+  | ResizeElementsResponse
   | ReadSceneResponse
   | LoadSceneResponse
   | SaveSceneResponse
@@ -484,6 +512,7 @@ const MESSAGE_TYPES = [
   'groupElements', 'groupElementsResult',
   'ungroupElement', 'ungroupElementResult',
   'moveElements', 'moveElementsResult',
+  'resizeElements', 'resizeElementsResult',
   'readScene', 'readSceneResult',
   'loadScene', 'loadSceneResult',
   'saveScene', 'saveSceneResult',

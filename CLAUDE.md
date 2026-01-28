@@ -107,6 +107,7 @@ Messages are defined in `cli/src/lib/protocol.ts` and follow a typed message pat
 - `agent-canvas delete-elements -i <ids>` - Delete elements (batch)
 - `agent-canvas rotate-elements -i <ids> -a <degrees>` - Rotate elements (batch)
 - `agent-canvas move-elements -i <ids> --delta-x <n> --delta-y <n>` - Move elements
+- `agent-canvas resize-elements -i <ids> [--top <n>] [--bottom <n>] [--left <n>] [--right <n>]` - Resize shapes
 - `agent-canvas group-elements -i <ids>` - Group elements
 - `agent-canvas ungroup-element -i <id>` - Ungroup element
 

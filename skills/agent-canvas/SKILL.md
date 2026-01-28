@@ -23,16 +23,16 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.6.0
+  bun add -g @agent-canvas/cli@0.7.0
   # or
-  npm install -g @agent-canvas/cli@0.6.0
+  npm install -g @agent-canvas/cli@0.7.0
   ```
 
-- **If installed but version differs from 0.6.0**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.6.0`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.6.0`
+- **If installed but version differs from 0.7.0**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.7.0`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.7.0`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.6.0
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.7.0
 
 ## Quick Start
 
@@ -170,8 +170,27 @@ agent-canvas add-polygon -p '[{"x":0,"y":0},{"x":100,"y":0},{"x":50,"y":100}]'
 agent-canvas delete-elements -i <id1>,<id2>,...
 agent-canvas rotate-elements -i <id1>,<id2>,... -a <degrees>
 agent-canvas move-elements -i <id1>,<id2>,... --delta-x <dx> --delta-y <dy>
+agent-canvas resize-elements -i <id1>,<id2>,... [--top <n>] [--bottom <n>] [--left <n>] [--right <n>]
 agent-canvas group-elements -i <id1>,<id2>,...
 agent-canvas ungroup-element -i <id>
+```
+
+**Resize Elements** (`resize-elements`):
+Expand or contract shape edges (rectangle, ellipse, diamond only). Values are in element's local coordinate system (respects rotation).
+
+Examples:
+```bash
+# Expand bottom edge by 50px (increase height)
+agent-canvas resize-elements -i abc123 --bottom 50
+
+# Expand both right and bottom (like dragging bottom-right corner)
+agent-canvas resize-elements -i abc123 --right 50 --bottom 30
+
+# Contract left edge by 20px (decrease width)
+agent-canvas resize-elements -i abc123 --left -20
+
+# Expand all sides uniformly
+agent-canvas resize-elements -i abc123 --top 25 --bottom 25 --left 25 --right 25
 ```
 
 ### Read Scene
@@ -238,6 +257,7 @@ agent-canvas clear                # Clear all elements from the canvas
      - Overlapping elements? → `move-elements` or `delete-elements`
      - Wrong sizes? → `delete-elements` and redraw
      - Misaligned arrows? → `delete-elements` and redraw with correct endpoints
+     - Container size issue? → `resize-elements` to adjust to perfect size 
 
 3. **Progressive Canvas Reading**:
    - `read` - Start here. Compact TOON format (~7% of JSON size)

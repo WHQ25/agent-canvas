@@ -14,6 +14,7 @@ import type {
   GroupElementsResponse,
   UngroupElementResponse,
   MoveElementsResponse,
+  ResizeElementsResponse,
   ReadSceneResponse,
   SaveSceneResponse,
   ExportImageResponse,
@@ -25,7 +26,7 @@ const program = new Command();
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.6.0');
+  .version('0.7.0');
 
 program
   .command('start')
@@ -378,6 +379,44 @@ program
     });
     if (result.success) {
       console.log(`Moved ${result.movedCount} element(s)`);
+    } else {
+      console.error(`Failed: ${result.error}`);
+      process.exit(1);
+    }
+    client.close();
+  });
+
+// ============================================================================
+// Resize Elements
+// ============================================================================
+program
+  .command('resize-elements')
+  .description('Resize shape elements by expanding/contracting edges')
+  .requiredOption('-i, --element-ids <ids>', 'Comma-separated element IDs')
+  .option('--top <number>', 'Expand top edge (positive = upward, negative = contract)', parseFloat)
+  .option('--bottom <number>', 'Expand bottom edge (positive = downward, negative = contract)', parseFloat)
+  .option('--left <number>', 'Expand left edge (positive = leftward, negative = contract)', parseFloat)
+  .option('--right <number>', 'Expand right edge (positive = rightward, negative = contract)', parseFloat)
+  .action(async (options) => {
+    const elementIds = options.elementIds.split(',').map((s: string) => s.trim());
+    const top = options.top ?? 0;
+    const bottom = options.bottom ?? 0;
+    const left = options.left ?? 0;
+    const right = options.right ?? 0;
+
+    if (top === 0 && bottom === 0 && left === 0 && right === 0) {
+      console.error('At least one of --top, --bottom, --left, --right must be specified');
+      process.exit(1);
+    }
+
+    const client = await connectToCanvas();
+    const result = await client.send<ResizeElementsResponse>({
+      type: 'resizeElements',
+      id: generateId(),
+      params: { elementIds, top, bottom, left, right },
+    });
+    if (result.success) {
+      console.log(`Resized ${result.resizedCount} element(s)`);
     } else {
       console.error(`Failed: ${result.error}`);
       process.exit(1);

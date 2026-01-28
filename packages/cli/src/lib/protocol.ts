@@ -225,6 +225,26 @@ export interface MoveElementsResponse {
 }
 
 // ============================================================================
+// Resize Elements
+// ============================================================================
+
+export interface ResizeElementsParams {
+  elementIds: string[];
+  top?: number;     // Positive = expand upward (in element's local coordinate system)
+  bottom?: number;  // Positive = expand downward
+  left?: number;    // Positive = expand leftward
+  right?: number;   // Positive = expand rightward
+}
+
+export interface ResizeElementsResponse {
+  type: 'resizeElementsResult';
+  id: string;
+  success: boolean;
+  resizedCount?: number;
+  error?: string;
+}
+
+// ============================================================================
 // Read Scene
 // ============================================================================
 

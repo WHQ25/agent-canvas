@@ -13,6 +13,7 @@ import type {
   GroupElementsParams,
   UngroupElementParams,
   MoveElementsParams,
+  ResizeElementsParams,
   LoadSceneParams,
   ExportImageParams,
   SceneElement,
@@ -557,7 +558,29 @@ export default function App() {
         }
       });
 
+      // Also collect bound text IDs for elements being rotated
+      const boundTextIds = new Set<string>();
+      const elementAngles = new Map<string, number>(); // bound text id -> new angle
+      elements.forEach(e => {
+        const shouldRotate = idsToRotate.has(e.id) ||
+          (groupIds.size > 0 && e.groupIds?.some(gid => groupIds.has(gid)));
+        if (shouldRotate && e.boundElements) {
+          const newAngle = (e.angle ?? 0) + angleInRadians;
+          for (const bound of e.boundElements) {
+            if (bound.type === 'text') {
+              boundTextIds.add(bound.id);
+              elementAngles.set(bound.id, newAngle);
+            }
+          }
+        }
+      });
+
       const updatedElements = elements.map(e => {
+        // Update bound text angle to match container
+        if (boundTextIds.has(e.id)) {
+          return { ...e, angle: elementAngles.get(e.id) ?? e.angle };
+        }
+
         const shouldRotate = idsToRotate.has(e.id) ||
           (groupIds.size > 0 && e.groupIds?.some(gid => groupIds.has(gid)));
 
@@ -707,6 +730,169 @@ export default function App() {
       return { type: 'moveElementsResult', id, success: true, movedCount };
     } catch (error) {
       return { type: 'moveElementsResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }, []);
+
+  const handleResizeElements = useCallback((id: string, params: ResizeElementsParams) => {
+    const api = excalidrawAPIRef.current;
+    if (!api) {
+      return { type: 'resizeElementsResult', id, success: false, error: 'Canvas not ready' };
+    }
+
+    const { top = 0, bottom = 0, left = 0, right = 0 } = params;
+
+    // At least one resize parameter must be provided
+    if (top === 0 && bottom === 0 && left === 0 && right === 0) {
+      return { type: 'resizeElementsResult', id, success: false, error: 'At least one resize parameter (top, bottom, left, right) must be non-zero' };
+    }
+
+    try {
+      const elements = api.getSceneElements();
+      const idsToResize = new Set(params.elementIds);
+      const SHAPE_TYPES = ['rectangle', 'ellipse', 'diamond'];
+      const BOUND_TEXT_PADDING = 5;
+
+      // Validate all elements are shapes
+      for (const el of elements) {
+        if (idsToResize.has(el.id) && !SHAPE_TYPES.includes(el.type)) {
+          return { type: 'resizeElementsResult', id, success: false, error: `Element ${el.id} is not a shape (type: ${el.type}). Only rectangle, ellipse, and diamond are supported.` };
+        }
+      }
+
+      // Build a map of container id to bound text element id
+      const boundTextMap = new Map<string, string>();
+      for (const el of elements) {
+        if (idsToResize.has(el.id) && el.boundElements) {
+          for (const bound of el.boundElements) {
+            if (bound.type === 'text') {
+              boundTextMap.set(el.id, bound.id);
+            }
+          }
+        }
+      }
+
+      // Build a map of text id to its element for quick lookup
+      const textElementsMap = new Map<string, ExcalidrawElement>();
+      for (const el of elements) {
+        if (el.type === 'text') {
+          textElementsMap.set(el.id, el);
+        }
+      }
+
+      // Store updated container info for bound text position calculation
+      const updatedContainers = new Map<string, { x: number; y: number; width: number; height: number; type: string }>();
+
+      let resizedCount = 0;
+      let updatedElements = elements.map(e => {
+        if (!idsToResize.has(e.id)) {
+          return e;
+        }
+
+        const width = e.width ?? 100;
+        const height = e.height ?? 100;
+        const angle = e.angle ?? 0;
+
+        // Calculate new dimensions
+        const newWidth = width + left + right;
+        const newHeight = height + top + bottom;
+
+        // Validate dimensions
+        if (newWidth <= 0) {
+          return { error: `Resulting width (${newWidth}) would be <= 0` };
+        }
+        if (newHeight <= 0) {
+          return { error: `Resulting height (${newHeight}) would be <= 0` };
+        }
+
+        // Calculate position offset in element's local coordinate system
+        const localDeltaX = -left;
+        const localDeltaY = -top;
+
+        // Transform local offset to global coordinates based on element's rotation
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const globalDeltaX = localDeltaX * cos - localDeltaY * sin;
+        const globalDeltaY = localDeltaX * sin + localDeltaY * cos;
+
+        const newX = e.x + globalDeltaX;
+        const newY = e.y + globalDeltaY;
+
+        // Store updated container info for bound text calculation
+        updatedContainers.set(e.id, { x: newX, y: newY, width: newWidth, height: newHeight, type: e.type });
+
+        resizedCount++;
+        return {
+          ...e,
+          x: newX,
+          y: newY,
+          width: newWidth,
+          height: newHeight,
+        };
+      });
+
+      // Check for errors
+      for (const el of updatedElements) {
+        if ('error' in el) {
+          return { type: 'resizeElementsResult', id, success: false, error: el.error as string };
+        }
+      }
+
+      if (resizedCount === 0) {
+        return { type: 'resizeElementsResult', id, success: false, error: 'No elements found' };
+      }
+
+      // Update bound text positions
+      updatedElements = updatedElements.map(e => {
+        // Check if this is a bound text that needs updating
+        if (e.type !== 'text' || !('containerId' in e) || !e.containerId) {
+          return e;
+        }
+
+        const container = updatedContainers.get(e.containerId);
+        if (!container) {
+          return e;
+        }
+
+        const textWidth = e.width ?? 0;
+        const textHeight = e.height ?? 0;
+
+        // Calculate container coords based on type (following Excalidraw's getContainerCoords logic)
+        let offsetX = BOUND_TEXT_PADDING;
+        let offsetY = BOUND_TEXT_PADDING;
+
+        if (container.type === 'ellipse') {
+          // For ellipse, calculate inscribed rectangle offset
+          offsetX += (container.width / 2) * (1 - Math.SQRT2 / 2);
+          offsetY += (container.height / 2) * (1 - Math.SQRT2 / 2);
+        } else if (container.type === 'diamond') {
+          // For diamond, calculate inscribed rectangle offset
+          offsetX += container.width / 4;
+          offsetY += container.height / 4;
+        }
+
+        // Calculate max available space for text
+        const maxWidth = container.width - 2 * offsetX;
+        const maxHeight = container.height - 2 * offsetY;
+
+        // Center the text within the available space
+        const newTextX = container.x + offsetX + (maxWidth - textWidth) / 2;
+        const newTextY = container.y + offsetY + (maxHeight - textHeight) / 2;
+
+        return {
+          ...e,
+          x: newTextX,
+          y: newTextY,
+        };
+      });
+
+      api.updateScene({
+        elements: updatedElements as ExcalidrawElement[],
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+
+      return { type: 'resizeElementsResult', id, success: true, resizedCount };
+    } catch (error) {
+      return { type: 'resizeElementsResult', id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }, []);
 
@@ -879,6 +1065,8 @@ export default function App() {
         return handleUngroupElement(command.id, command.params as UngroupElementParams);
       case 'moveElements':
         return handleMoveElements(command.id, command.params as MoveElementsParams);
+      case 'resizeElements':
+        return handleResizeElements(command.id, command.params as ResizeElementsParams);
       case 'readScene':
         return handleReadScene(command.id);
       case 'loadScene':
@@ -895,8 +1083,8 @@ export default function App() {
   }, [
     handleAddShape, handleAddText, handleAddLine, handleAddArrow, handleAddPolygon,
     handleDeleteElements, handleRotateElements, handleGroupElements, handleUngroupElement,
-    handleMoveElements, handleReadScene, handleLoadScene, handleSaveScene, handleExportImage,
-    handleClearCanvas,
+    handleMoveElements, handleResizeElements, handleReadScene, handleLoadScene, handleSaveScene,
+    handleExportImage, handleClearCanvas,
   ]);
 
   // WebSocket connection
