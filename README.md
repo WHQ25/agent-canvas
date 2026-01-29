@@ -1,4 +1,5 @@
 # Agent Canvas
+![Screenshot](assets/screenshot.png)
 
 An AI agent skill for drawing diagrams, flowcharts, and visualizations on Excalidraw.
 

@@ -13,14 +13,36 @@ export function CanvasThumbnail({
   const [svgString, setSvgString] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Memoize elements to avoid unnecessary re-renders
+  // Filter out deleted elements
   const elements = useMemo(() => {
     if (!scene?.elements) return [];
     return scene.elements.filter((el: unknown) => {
       const element = el as { isDeleted?: boolean };
       return !element.isDeleted;
     });
-  }, [scene]);
+  }, [scene?.elements]);
+
+  // Create stable key from elements to avoid unnecessary re-renders
+  // Only include properties that affect visual appearance
+  const elementsKey = useMemo(() => {
+    if (elements.length === 0) return '';
+    return JSON.stringify(elements.map((el: unknown) => {
+      const e = el as Record<string, unknown>;
+      return {
+        id: e.id,
+        type: e.type,
+        x: e.x,
+        y: e.y,
+        width: e.width,
+        height: e.height,
+        angle: e.angle,
+        strokeColor: e.strokeColor,
+        backgroundColor: e.backgroundColor,
+        points: e.points,
+        text: e.text,
+      };
+    }));
+  }, [elements]);
 
   useEffect(() => {
     if (elements.length === 0) {
@@ -76,7 +98,8 @@ export function CanvasThumbnail({
     return () => {
       cancelled = true;
     };
-  }, [elements, isDarkMode, scene?.files]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elementsKey, isDarkMode]);
 
   const containerStyle: React.CSSProperties = {
     width: '100%',
