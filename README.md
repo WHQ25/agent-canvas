@@ -22,6 +22,8 @@ agent-canvas add-shape -t rectangle -x 100 -y 100 -l "Hello"
 
 📦 **Easy setup** — Skill automatically installs and updates the CLI. Just start drawing.
 
+🗂️ **Multi-canvas** — Work on multiple diagrams simultaneously. Switch between canvases via sidebar or CLI commands.
+
 🧩 **Extensible** — Add custom drawing tutorials in `references/` to teach your agent domain-specific diagram styles.
 
 ## Installation

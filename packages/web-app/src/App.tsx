@@ -1,7 +1,6 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { Excalidraw, convertToExcalidrawElements, exportToBlob, restoreElements, CaptureUpdateAction } from '@excalidraw/excalidraw';
 
-const STORAGE_KEY = 'agent-canvas-scene';
 import type {
   AddShapeParams,
   AddTextParams,
@@ -17,7 +16,27 @@ import type {
   LoadSceneParams,
   ExportImageParams,
   SceneElement,
+  CanvasMetadata,
+  CanvasListState,
+  CreateCanvasParams,
+  SwitchCanvasParams,
+  RenameCanvasParams,
 } from './protocol';
+
+import {
+  loadCanvasList,
+  saveCanvasList,
+  loadCanvasScene,
+  saveCanvasScene,
+  deleteCanvasScene,
+  createCanvas,
+  updateCanvasTimestamp,
+  findCanvasByName,
+  isCanvasNameUnique,
+  type CanvasSceneData,
+} from './lib/canvas-storage';
+
+import { CanvasSidebar } from './components/CanvasSidebar';
 
 const WS_PORT = 7890;
 
@@ -58,23 +77,6 @@ interface ExcalidrawAPI {
     captureUpdate?: 'IMMEDIATELY' | 'EVENTUALLY' | 'NEVER';
   }) => void;
 }
-
-// Load saved scene from localStorage
-const loadSavedScene = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const data = JSON.parse(saved);
-      return {
-        elements: data.elements || [],
-        appState: data.appState || {},
-      };
-    }
-  } catch (error) {
-    console.error('Failed to load saved scene:', error);
-  }
-  return null;
-};
 
 // AppState keys to save (matching Excalidraw's browser: true config)
 const APP_STATE_KEYS_TO_SAVE = [
@@ -127,29 +129,399 @@ const APP_STATE_KEYS_TO_SAVE = [
   'objectsSnapModeEnabled',
 ] as const;
 
-// Save scene to localStorage
-const saveScene = (elements: readonly unknown[], appState: unknown) => {
-  try {
-    const state = appState as Record<string, unknown>;
-    const filteredAppState: Record<string, unknown> = {};
-    for (const key of APP_STATE_KEYS_TO_SAVE) {
-      if (key in state) {
-        filteredAppState[key] = state[key];
-      }
+// Filter appState to only save necessary keys
+function filterAppState(appState: unknown): Record<string, unknown> {
+  const state = appState as Record<string, unknown>;
+  const filteredAppState: Record<string, unknown> = {};
+  for (const key of APP_STATE_KEYS_TO_SAVE) {
+    if (key in state) {
+      filteredAppState[key] = state[key];
     }
-    const data = { elements, appState: filteredAppState };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (error) {
-    console.error('Failed to save scene:', error);
   }
-};
+  return filteredAppState;
+}
 
 export default function App() {
   const excalidrawAPIRef = useRef<ExcalidrawAPI | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const [initialData] = useState(loadSavedScene);
 
-  // Handler functions
+  // Canvas list state
+  const [canvasListState, setCanvasListState] = useState<CanvasListState>(() => loadCanvasList());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Ref to track canvas list state for handlers (avoids stale closures)
+  const canvasListStateRef = useRef(canvasListState);
+  canvasListStateRef.current = canvasListState;
+
+  // Scene cache for thumbnails (including current scene)
+  const [sceneCache, setSceneCache] = useState<Map<string, CanvasSceneData | null>>(() => {
+    const cache = new Map<string, CanvasSceneData | null>();
+    const listState = loadCanvasList();
+    for (const canvas of listState.canvases) {
+      cache.set(canvas.id, loadCanvasScene(canvas.id));
+    }
+    return cache;
+  });
+
+  // Current canvas scene
+  const currentScene = useMemo(() => {
+    return sceneCache.get(canvasListState.activeCanvasId) || null;
+  }, [sceneCache, canvasListState.activeCanvasId]);
+
+  // Get theme from current scene
+  const isDarkMode = useMemo(() => {
+    const appState = currentScene?.appState as { theme?: string } | undefined;
+    return appState?.theme === 'dark';
+  }, [currentScene]);
+
+  // Get canvas background color from current scene (raw value before dark mode filter)
+  const canvasBackgroundColor = useMemo(() => {
+    const appState = currentScene?.appState as { viewBackgroundColor?: string } | undefined;
+    // Default is white - Excalidraw applies CSS filter in dark mode
+    return appState?.viewBackgroundColor || '#ffffff';
+  }, [currentScene]);
+
+  // Save current canvas scene
+  const saveCurrentScene = useCallback(() => {
+    const api = excalidrawAPIRef.current;
+    if (!api) return;
+
+    const state = canvasListStateRef.current;
+    const elements = api.getSceneElements();
+    const appState = api.getAppState();
+    const files = api.getFiles();
+    const filteredAppState = filterAppState(appState);
+
+    const sceneData: CanvasSceneData = {
+      elements: elements as unknown[],
+      appState: filteredAppState,
+      files,
+    };
+
+    saveCanvasScene(state.activeCanvasId, sceneData);
+
+    // Update scene cache
+    setSceneCache(prev => {
+      const next = new Map(prev);
+      next.set(state.activeCanvasId, sceneData);
+      return next;
+    });
+
+    // Update timestamp in canvas list
+    setCanvasListState(prev => {
+      const updated = updateCanvasTimestamp(prev, state.activeCanvasId);
+      saveCanvasList(updated);
+      return updated;
+    });
+  }, []);
+
+  // Handler: List canvases
+  const handleListCanvases = useCallback((id: string) => {
+    const state = canvasListStateRef.current;
+    return {
+      type: 'listCanvasesResult',
+      id,
+      success: true,
+      activeCanvasId: state.activeCanvasId,
+      canvases: state.canvases,
+    };
+  }, []);
+
+  // Handler: Create canvas
+  const handleCreateCanvas = useCallback((id: string, params: CreateCanvasParams) => {
+    const state = canvasListStateRef.current;
+    const api = excalidrawAPIRef.current;
+    const name = params.name.trim();
+
+    if (!name) {
+      return { type: 'createCanvasResult', id, success: false, error: 'Canvas name cannot be empty' };
+    }
+
+    if (!isCanvasNameUnique(state, name)) {
+      return { type: 'createCanvasResult', id, success: false, error: `Canvas "${name}" already exists` };
+    }
+
+    const newCanvas = createCanvas(name);
+
+    // Save current scene before switching
+    if (params.switchTo) {
+      saveCurrentScene();
+    }
+
+    // Preserve current theme for new canvas
+    const currentAppState = api?.getAppState() as { theme?: string } | undefined;
+    const preservedAppState = { theme: currentAppState?.theme };
+
+    // Update canvas list
+    const updatedState: CanvasListState = {
+      activeCanvasId: params.switchTo ? newCanvas.id : state.activeCanvasId,
+      canvases: [...state.canvases, newCanvas],
+    };
+
+    setCanvasListState(updatedState);
+    saveCanvasList(updatedState);
+
+    // Initialize empty scene for new canvas with preserved theme
+    const emptyScene: CanvasSceneData = { elements: [], appState: preservedAppState };
+    saveCanvasScene(newCanvas.id, emptyScene);
+    setSceneCache(prev => {
+      const next = new Map(prev);
+      next.set(newCanvas.id, emptyScene);
+      return next;
+    });
+
+    // If switching, load empty scene (theme is preserved via appState)
+    if (params.switchTo) {
+      if (api) {
+        api.updateScene({
+          elements: [],
+          captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+        });
+      }
+    }
+
+    return { type: 'createCanvasResult', id, success: true, canvas: newCanvas };
+  }, [saveCurrentScene]);
+
+  // Ref for debounce timeout - defined early so switch handlers can access it
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Handler: Switch canvas
+  const handleSwitchCanvas = useCallback((id: string, params: SwitchCanvasParams) => {
+    const state = canvasListStateRef.current;
+    const canvas = findCanvasByName(state, params.name);
+
+    if (!canvas) {
+      return { type: 'switchCanvasResult', id, success: false, error: `Canvas "${params.name}" not found` };
+    }
+
+    if (canvas.id === state.activeCanvasId) {
+      return { type: 'switchCanvasResult', id, success: true, canvas };
+    }
+
+    // Cancel pending debounce to avoid saving to wrong canvas
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    // Save current scene
+    saveCurrentScene();
+
+    // Load target scene
+    const targetScene = loadCanvasScene(canvas.id);
+    const api = excalidrawAPIRef.current;
+    if (api) {
+      api.updateScene({
+        elements: (targetScene?.elements as readonly unknown[]) || [],
+        appState: targetScene?.appState,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+    }
+
+    // Update active canvas
+    const updatedState: CanvasListState = {
+      ...state,
+      activeCanvasId: canvas.id,
+    };
+    setCanvasListState(updatedState);
+    saveCanvasList(updatedState);
+
+    // Update cache
+    setSceneCache(prev => {
+      const next = new Map(prev);
+      next.set(canvas.id, targetScene);
+      return next;
+    });
+
+    return { type: 'switchCanvasResult', id, success: true, canvas };
+  }, [saveCurrentScene]);
+
+  // Handler: Rename canvas (current canvas)
+  const handleRenameCanvas = useCallback((id: string, params: RenameCanvasParams) => {
+    const state = canvasListStateRef.current;
+    const newName = params.newName.trim();
+
+    if (!newName) {
+      return { type: 'renameCanvasResult', id, success: false, error: 'Canvas name cannot be empty' };
+    }
+
+    if (!isCanvasNameUnique(state, newName, state.activeCanvasId)) {
+      return { type: 'renameCanvasResult', id, success: false, error: `Canvas "${newName}" already exists` };
+    }
+
+    const updatedCanvases = state.canvases.map(c =>
+      c.id === state.activeCanvasId
+        ? { ...c, name: newName, updatedAt: Date.now() }
+        : c
+    );
+
+    const updatedState: CanvasListState = {
+      ...state,
+      canvases: updatedCanvases,
+    };
+    setCanvasListState(updatedState);
+    saveCanvasList(updatedState);
+
+    const renamedCanvas = updatedCanvases.find(c => c.id === state.activeCanvasId);
+    return { type: 'renameCanvasResult', id, success: true, canvas: renamedCanvas };
+  }, []);
+
+  // UI handler: Select canvas from sidebar
+  const handleSelectCanvas = useCallback((canvasId: string) => {
+    const state = canvasListStateRef.current;
+    if (canvasId === state.activeCanvasId) return;
+
+    // Cancel pending debounce to avoid saving to wrong canvas
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    // Save current scene
+    saveCurrentScene();
+
+    // Load target scene
+    const targetScene = loadCanvasScene(canvasId);
+    const api = excalidrawAPIRef.current;
+    if (api) {
+      api.updateScene({
+        elements: (targetScene?.elements as readonly unknown[]) || [],
+        appState: targetScene?.appState,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+    }
+
+    // Update active canvas
+    const updatedState: CanvasListState = {
+      ...state,
+      activeCanvasId: canvasId,
+    };
+    setCanvasListState(updatedState);
+    saveCanvasList(updatedState);
+
+    // Update cache
+    setSceneCache(prev => {
+      const next = new Map(prev);
+      next.set(canvasId, targetScene);
+      return next;
+    });
+  }, [saveCurrentScene]);
+
+  // UI handler: Create canvas from sidebar
+  const handleCreateCanvasUI = useCallback(() => {
+    const state = canvasListStateRef.current;
+    const api = excalidrawAPIRef.current;
+
+    // Generate unique name
+    let baseName = 'New Canvas';
+    let counter = 1;
+    let name = baseName;
+    while (!isCanvasNameUnique(state, name)) {
+      name = `${baseName} ${counter++}`;
+    }
+
+    const newCanvas = createCanvas(name);
+
+    // Save current scene
+    saveCurrentScene();
+
+    // Preserve current theme for new canvas
+    const currentAppState = api?.getAppState() as { theme?: string } | undefined;
+    const preservedAppState = { theme: currentAppState?.theme };
+
+    // Update canvas list
+    const updatedState: CanvasListState = {
+      activeCanvasId: newCanvas.id,
+      canvases: [...state.canvases, newCanvas],
+    };
+    setCanvasListState(updatedState);
+    saveCanvasList(updatedState);
+
+    // Initialize empty scene for new canvas with preserved theme
+    const emptyScene: CanvasSceneData = { elements: [], appState: preservedAppState };
+    saveCanvasScene(newCanvas.id, emptyScene);
+    setSceneCache(prev => {
+      const next = new Map(prev);
+      next.set(newCanvas.id, emptyScene);
+      return next;
+    });
+
+    // Clear canvas but keep theme
+    if (api) {
+      api.updateScene({
+        elements: [],
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+    }
+  }, [saveCurrentScene]);
+
+  // UI handler: Rename canvas from sidebar
+  const handleRenameCanvasUI = useCallback((canvasId: string, newName: string) => {
+    const state = canvasListStateRef.current;
+    const trimmedName = newName.trim();
+    if (!trimmedName || !isCanvasNameUnique(state, trimmedName, canvasId)) {
+      return;
+    }
+
+    const updatedCanvases = state.canvases.map(c =>
+      c.id === canvasId
+        ? { ...c, name: trimmedName, updatedAt: Date.now() }
+        : c
+    );
+
+    const updatedState: CanvasListState = {
+      ...state,
+      canvases: updatedCanvases,
+    };
+    setCanvasListState(updatedState);
+    saveCanvasList(updatedState);
+  }, []);
+
+  // UI handler: Delete canvas from sidebar
+  const handleDeleteCanvasUI = useCallback((canvasId: string) => {
+    const state = canvasListStateRef.current;
+    // Can't delete the last canvas
+    if (state.canvases.length <= 1) {
+      return;
+    }
+
+    // Find next canvas to switch to
+    const currentIndex = state.canvases.findIndex(c => c.id === canvasId);
+    const nextCanvas = state.canvases[currentIndex === 0 ? 1 : currentIndex - 1];
+
+    // If deleting active canvas, switch first
+    if (canvasId === state.activeCanvasId) {
+      const targetScene = loadCanvasScene(nextCanvas.id);
+      const api = excalidrawAPIRef.current;
+      if (api) {
+        api.updateScene({
+          elements: (targetScene?.elements as readonly unknown[]) || [],
+          appState: targetScene?.appState,
+          captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+        });
+      }
+    }
+
+    // Remove canvas from list
+    const updatedCanvases = state.canvases.filter(c => c.id !== canvasId);
+    const updatedState: CanvasListState = {
+      activeCanvasId: canvasId === state.activeCanvasId ? nextCanvas.id : state.activeCanvasId,
+      canvases: updatedCanvases,
+    };
+    setCanvasListState(updatedState);
+    saveCanvasList(updatedState);
+
+    // Delete scene data
+    deleteCanvasScene(canvasId);
+    setSceneCache(prev => {
+      const next = new Map(prev);
+      next.delete(canvasId);
+      return next;
+    });
+  }, []);
+
+  // Handler functions for drawing commands
   const handleAddShape = useCallback((id: string, params: AddShapeParams) => {
     const api = excalidrawAPIRef.current;
     if (!api) {
@@ -185,7 +557,6 @@ export default function App() {
       }
 
       const newElements = convertToExcalidrawElements([shapeSkeleton]);
-      // Merge customData into converted element (convertToExcalidrawElements may not preserve it)
       const elementsToAdd = params.customData
         ? newElements.map(el => ({ ...el, customData: params.customData }))
         : newElements;
@@ -194,7 +565,6 @@ export default function App() {
         captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
 
-      // Get the added element's actual dimensions (label may have adjusted the size)
       const addedElement = api.getSceneElements().find(e => e.id === newElements[0].id);
       return {
         type: 'addShapeResult',
@@ -219,12 +589,11 @@ export default function App() {
 
     try {
       const elements = api.getSceneElements();
-      // First create with temporary position to get actual dimensions
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const textSkeleton: any = {
         type: 'text',
         text: params.text.replace(/\\n/g, '\n'),
-        x: 0,  // temporary position
+        x: 0,
         y: 0,
         fontSize: params.fontSize ?? 20,
         textAlign: params.textAlign ?? 'left',
@@ -237,29 +606,24 @@ export default function App() {
       const width = textElement.width ?? 0;
       const height = textElement.height ?? 0;
 
-      // Calculate position offset based on anchor
       let offsetX = 0;
       let offsetY = 0;
       const anchor = params.anchor ?? 'bottomLeft';
 
-      // Horizontal offset
       if (anchor === 'topCenter' || anchor === 'center' || anchor === 'bottomCenter') {
         offsetX = -width / 2;
       } else if (anchor === 'topRight' || anchor === 'rightCenter' || anchor === 'bottomRight') {
         offsetX = -width;
       }
-      // Vertical offset
       if (anchor === 'leftCenter' || anchor === 'center' || anchor === 'rightCenter') {
         offsetY = -height / 2;
       } else if (anchor === 'bottomLeft' || anchor === 'bottomCenter' || anchor === 'bottomRight') {
         offsetY = -height;
       }
 
-      // Apply the offset to get final position
       const finalX = params.x + offsetX;
       const finalY = params.y + offsetY;
 
-      // Update element with final position (use finalX/Y directly, not as offset)
       const elementsToAdd = newElements.map(el => ({
         ...el,
         x: finalX,
@@ -333,48 +697,36 @@ export default function App() {
       const dx = params.endX - params.x;
       const dy = params.endY - params.y;
 
-      // Calculate points based on arrow type
       let points: number[][];
       if (params.arrowType === 'round') {
-        // Use custom midpoint if provided, otherwise default to middle point
         if (params.midpoints && params.midpoints.length > 0) {
-          // Use first midpoint as the curve control point (relative coordinates)
           const mid = params.midpoints[0];
           points = [[0, 0], [mid.x - params.x, mid.y - params.y], [dx, dy]];
         } else {
-          // Default: straight line (no curve)
           points = [[0, 0], [dx / 2, dy / 2], [dx, dy]];
         }
       } else if (params.arrowType === 'elbow') {
-        // Use custom midpoints if provided, otherwise create default L-shape
         if (params.midpoints && params.midpoints.length > 0) {
-          // Convert absolute coordinates to relative (from start point)
           points = [[0, 0]];
           for (const pt of params.midpoints) {
             points.push([pt.x - params.x, pt.y - params.y]);
           }
           points.push([dx, dy]);
         } else {
-          // Default: simple L-shape (horizontal first, then vertical)
           points = [[0, 0], [dx, 0], [dx, dy]];
         }
       } else {
-        // Default straight line
         points = [[0, 0], [dx, dy]];
       }
 
-      // Calculate dimensions from points
       const allX = points.map(p => p[0]);
       const allY = points.map(p => p[1]);
       const width = Math.max(...allX) - Math.min(...allX);
       const height = Math.max(...allY) - Math.min(...allY);
 
-      // Use restoreElements for elbow/round arrows since it properly handles
-      // elbowed, roundness, and fixedSegments properties that convertToExcalidrawElements ignores
       if (params.arrowType === 'elbow' || params.arrowType === 'round') {
         const arrowId = Math.random().toString(36).substring(2, 15);
 
-        // Build the raw element that restoreElements expects
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rawArrow: any = {
           id: arrowId,
@@ -390,7 +742,6 @@ export default function App() {
           startArrowhead: params.startArrowhead ?? null,
           endArrowhead: params.endArrowhead ?? 'arrow',
           customData: params.customData,
-          // Arrow-specific defaults
           startBinding: null,
           endBinding: null,
           lastCommittedPoint: null,
@@ -407,7 +758,6 @@ export default function App() {
           rawArrow.endIsSpecial = false;
         }
 
-        // restoreElements properly handles elbowed and roundness properties
         const restoredElements = restoreElements([rawArrow], null);
 
         api.updateScene({
@@ -418,7 +768,6 @@ export default function App() {
         return { type: 'addArrowResult', id, success: true, elementId: arrowId };
       }
 
-      // For sharp (default) arrows, use convertToExcalidrawElements
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const arrowSkeleton: any = {
         type: 'arrow',
@@ -504,7 +853,6 @@ export default function App() {
       const elements = api.getSceneElements();
       const idsToDelete = new Set(params.elementIds);
 
-      // Also delete bound elements (labels) of shapes being deleted
       for (const el of elements) {
         if (idsToDelete.has(el.id) && el.boundElements) {
           for (const bound of el.boundElements) {
@@ -550,7 +898,6 @@ export default function App() {
       const angleInRadians = (params.angle * Math.PI) / 180;
       let rotatedCount = 0;
 
-      // Collect all group IDs from the target elements
       const groupIds = new Set<string>();
       elements.forEach(e => {
         if (idsToRotate.has(e.id) && e.groupIds?.length) {
@@ -558,9 +905,8 @@ export default function App() {
         }
       });
 
-      // Also collect bound text IDs for elements being rotated
       const boundTextIds = new Set<string>();
-      const elementAngles = new Map<string, number>(); // bound text id -> new angle
+      const elementAngles = new Map<string, number>();
       elements.forEach(e => {
         const shouldRotate = idsToRotate.has(e.id) ||
           (groupIds.size > 0 && e.groupIds?.some(gid => groupIds.has(gid)));
@@ -576,7 +922,6 @@ export default function App() {
       });
 
       const updatedElements = elements.map(e => {
-        // Update bound text angle to match container
         if (boundTextIds.has(e.id)) {
           return { ...e, angle: elementAngles.get(e.id) ?? e.angle };
         }
@@ -684,7 +1029,6 @@ export default function App() {
       const elements = api.getSceneElements();
       const idsToMove = new Set(params.elementIds);
 
-      // Also move bound elements (labels) of shapes being moved
       for (const el of elements) {
         if (idsToMove.has(el.id) && el.boundElements) {
           for (const bound of el.boundElements) {
@@ -693,7 +1037,6 @@ export default function App() {
         }
       }
 
-      // Collect all group IDs from the target elements
       const groupIds = new Set<string>();
       elements.forEach(e => {
         if (idsToMove.has(e.id) && e.groupIds?.length) {
@@ -741,7 +1084,6 @@ export default function App() {
 
     const { top = 0, bottom = 0, left = 0, right = 0 } = params;
 
-    // At least one resize parameter must be provided
     if (top === 0 && bottom === 0 && left === 0 && right === 0) {
       return { type: 'resizeElementsResult', id, success: false, error: 'At least one resize parameter (top, bottom, left, right) must be non-zero' };
     }
@@ -752,34 +1094,12 @@ export default function App() {
       const SHAPE_TYPES = ['rectangle', 'ellipse', 'diamond'];
       const BOUND_TEXT_PADDING = 5;
 
-      // Validate all elements are shapes
       for (const el of elements) {
         if (idsToResize.has(el.id) && !SHAPE_TYPES.includes(el.type)) {
           return { type: 'resizeElementsResult', id, success: false, error: `Element ${el.id} is not a shape (type: ${el.type}). Only rectangle, ellipse, and diamond are supported.` };
         }
       }
 
-      // Build a map of container id to bound text element id
-      const boundTextMap = new Map<string, string>();
-      for (const el of elements) {
-        if (idsToResize.has(el.id) && el.boundElements) {
-          for (const bound of el.boundElements) {
-            if (bound.type === 'text') {
-              boundTextMap.set(el.id, bound.id);
-            }
-          }
-        }
-      }
-
-      // Build a map of text id to its element for quick lookup
-      const textElementsMap = new Map<string, ExcalidrawElement>();
-      for (const el of elements) {
-        if (el.type === 'text') {
-          textElementsMap.set(el.id, el);
-        }
-      }
-
-      // Store updated container info for bound text position calculation
       const updatedContainers = new Map<string, { x: number; y: number; width: number; height: number; type: string }>();
 
       let resizedCount = 0;
@@ -792,11 +1112,9 @@ export default function App() {
         const height = e.height ?? 100;
         const angle = e.angle ?? 0;
 
-        // Calculate new dimensions
         const newWidth = width + left + right;
         const newHeight = height + top + bottom;
 
-        // Validate dimensions
         if (newWidth <= 0) {
           return { error: `Resulting width (${newWidth}) would be <= 0` };
         }
@@ -804,11 +1122,9 @@ export default function App() {
           return { error: `Resulting height (${newHeight}) would be <= 0` };
         }
 
-        // Calculate position offset in element's local coordinate system
         const localDeltaX = -left;
         const localDeltaY = -top;
 
-        // Transform local offset to global coordinates based on element's rotation
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
         const globalDeltaX = localDeltaX * cos - localDeltaY * sin;
@@ -817,7 +1133,6 @@ export default function App() {
         const newX = e.x + globalDeltaX;
         const newY = e.y + globalDeltaY;
 
-        // Store updated container info for bound text calculation
         updatedContainers.set(e.id, { x: newX, y: newY, width: newWidth, height: newHeight, type: e.type });
 
         resizedCount++;
@@ -830,7 +1145,6 @@ export default function App() {
         };
       });
 
-      // Check for errors
       for (const el of updatedElements) {
         if ('error' in el) {
           return { type: 'resizeElementsResult', id, success: false, error: el.error as string };
@@ -841,9 +1155,7 @@ export default function App() {
         return { type: 'resizeElementsResult', id, success: false, error: 'No elements found' };
       }
 
-      // Update bound text positions
       updatedElements = updatedElements.map(e => {
-        // Check if this is a bound text that needs updating
         if (e.type !== 'text' || !('containerId' in e) || !e.containerId) {
           return e;
         }
@@ -856,25 +1168,20 @@ export default function App() {
         const textWidth = e.width ?? 0;
         const textHeight = e.height ?? 0;
 
-        // Calculate container coords based on type (following Excalidraw's getContainerCoords logic)
         let offsetX = BOUND_TEXT_PADDING;
         let offsetY = BOUND_TEXT_PADDING;
 
         if (container.type === 'ellipse') {
-          // For ellipse, calculate inscribed rectangle offset
           offsetX += (container.width / 2) * (1 - Math.SQRT2 / 2);
           offsetY += (container.height / 2) * (1 - Math.SQRT2 / 2);
         } else if (container.type === 'diamond') {
-          // For diamond, calculate inscribed rectangle offset
           offsetX += container.width / 4;
           offsetY += container.height / 4;
         }
 
-        // Calculate max available space for text
         const maxWidth = container.width - 2 * offsetX;
         const maxHeight = container.height - 2 * offsetY;
 
-        // Center the text within the available space
         const newTextX = container.x + offsetX + (maxWidth - textWidth) / 2;
         const newTextY = container.y + offsetY + (maxHeight - textHeight) / 2;
 
@@ -928,7 +1235,6 @@ export default function App() {
           customData: e.customData,
         }));
 
-      // Extract selected element IDs
       const selectedElementIds = appState.selectedElementIds
         ? Object.keys(appState.selectedElementIds)
         : [];
@@ -1051,6 +1357,14 @@ export default function App() {
   // Process incoming commands
   const processCommand = useCallback(async (command: { type: string; id: string; params?: unknown }) => {
     switch (command.type) {
+      case 'listCanvases':
+        return handleListCanvases(command.id);
+      case 'createCanvas':
+        return handleCreateCanvas(command.id, command.params as CreateCanvasParams);
+      case 'switchCanvas':
+        return handleSwitchCanvas(command.id, command.params as SwitchCanvasParams);
+      case 'renameCanvas':
+        return handleRenameCanvas(command.id, command.params as RenameCanvasParams);
       case 'addShape':
         return handleAddShape(command.id, command.params as AddShapeParams);
       case 'addText':
@@ -1087,6 +1401,7 @@ export default function App() {
         return { type: 'error', id: command.id, success: false, error: `Unknown command: ${command.type}` };
     }
   }, [
+    handleListCanvases, handleCreateCanvas, handleSwitchCanvas, handleRenameCanvas,
     handleAddShape, handleAddText, handleAddLine, handleAddArrow, handleAddPolygon,
     handleDeleteElements, handleRotateElements, handleGroupElements, handleUngroupElement,
     handleMoveElements, handleResizeElements, handleReadScene, handleLoadScene, handleSaveScene,
@@ -1101,7 +1416,6 @@ export default function App() {
 
       ws.onopen = () => {
         console.log('Connected to server');
-        // Send browser identification
         ws.send(JSON.stringify({ type: 'browserConnect' }));
       };
 
@@ -1137,18 +1451,83 @@ export default function App() {
     };
   }, [processCommand]);
 
-  // Save on change (debounced by Excalidraw internally)
-  const handleChange = useCallback((elements: readonly unknown[], appState: unknown) => {
-    saveScene(elements, appState);
+  // Debounced scene save and thumbnail update
+  // Use ref to track active canvas ID for debounced save (avoids stale closure)
+  const activeCanvasIdRef = useRef(canvasListState.activeCanvasId);
+  activeCanvasIdRef.current = canvasListState.activeCanvasId;
+
+  const handleChange = useCallback(() => {
+    // Debounce save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const api = excalidrawAPIRef.current;
+      if (!api) return;
+
+      // Read current state from API (not from closure) to avoid stale data
+      const activeId = activeCanvasIdRef.current;
+      const elements = api.getSceneElements();
+      const appState = api.getAppState();
+      const files = api.getFiles();
+      const filteredAppState = filterAppState(appState);
+
+      const sceneData: CanvasSceneData = {
+        elements: elements as unknown[],
+        appState: filteredAppState,
+        files,
+      };
+
+      saveCanvasScene(activeId, sceneData);
+
+      // Update scene cache for thumbnail
+      setSceneCache(prev => {
+        const next = new Map(prev);
+        next.set(activeId, sceneData);
+        return next;
+      });
+
+      // Update timestamp - use functional update to get latest state
+      setCanvasListState(prev => {
+        const updated = updateCanvasTimestamp(prev, activeId);
+        saveCanvasList(updated);
+        return updated;
+      });
+    }, 500);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, []);
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-      <Excalidraw
-        excalidrawAPI={(api) => { excalidrawAPIRef.current = api as unknown as ExcalidrawAPI; }}
-        initialData={initialData || undefined}
-        onChange={handleChange}
+    <div style={{ display: 'flex', width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+      <CanvasSidebar
+        canvases={canvasListState.canvases}
+        activeCanvasId={canvasListState.activeCanvasId}
+        scenes={sceneCache}
+        isDarkMode={isDarkMode}
+        canvasBackgroundColor={canvasBackgroundColor}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onSelectCanvas={handleSelectCanvas}
+        onCreateCanvas={handleCreateCanvasUI}
+        onRenameCanvas={handleRenameCanvasUI}
+        onDeleteCanvas={handleDeleteCanvasUI}
       />
+      <div style={{ flex: 1, height: '100%', position: 'relative' }}>
+        <Excalidraw
+          excalidrawAPI={(api) => { excalidrawAPIRef.current = api as unknown as ExcalidrawAPI; }}
+          initialData={currentScene ? { elements: currentScene.elements as never[], appState: currentScene.appState } : undefined}
+          onChange={handleChange}
+        />
+      </div>
     </div>
   );
 }

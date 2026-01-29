@@ -94,7 +94,13 @@ Messages are defined in `cli/src/lib/protocol.ts` and follow a typed message pat
 
 ### Application Control
 - `agent-canvas start` - Start server and open browser
-- `agent-canvas start -f <path>` - Load .excalidraw file on start
+- `agent-canvas load <path>` - Load .excalidraw file into current canvas
+
+### Canvas Management
+- `agent-canvas list` - List all canvases (* marks active)
+- `agent-canvas new -n <name> [--use]` - Create new canvas, optionally switch to it
+- `agent-canvas use <name>` - Switch to canvas by name
+- `agent-canvas rename <name>` - Rename current canvas
 
 ### Drawing Commands
 - `agent-canvas add-shape -t <rectangle|ellipse|diamond> -x <n> -y <n>` - Add shape

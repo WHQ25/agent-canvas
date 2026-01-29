@@ -15,6 +15,7 @@ bun add -g @agent-canvas/cli
 ## Features
 
 - Real-time canvas in browser via WebSocket
+- Multi-canvas support: manage multiple diagrams with sidebar or CLI
 - Shapes: rectangle, ellipse, diamond, polygon
 - Text with 9 anchor points for precise positioning
 - Arrows: sharp, round (curved), elbow (90° turns)
@@ -27,7 +28,29 @@ bun add -g @agent-canvas/cli
 
 ```bash
 agent-canvas start
-agent-canvas start -f diagram.excalidraw  # Load existing file
+```
+
+### Load File
+
+```bash
+agent-canvas load diagram.excalidraw  # Load into current canvas
+```
+
+### Canvas Management
+
+```bash
+# List all canvases (* marks active)
+agent-canvas list
+
+# Create new canvas
+agent-canvas new -n "Flowchart"
+agent-canvas new -n "Architecture" --use  # Create and switch to it
+
+# Switch to canvas by name
+agent-canvas use "Flowchart"
+
+# Rename current canvas
+agent-canvas rename "New Name"
 ```
 
 ### Drawing

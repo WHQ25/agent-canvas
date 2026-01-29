@@ -1,6 +1,107 @@
 export const WS_PORT = 7890;
 
 // ============================================================================
+// Canvas Metadata
+// ============================================================================
+
+export interface CanvasMetadata {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CanvasListState {
+  activeCanvasId: string;
+  canvases: CanvasMetadata[];
+}
+
+// ============================================================================
+// List Canvases
+// ============================================================================
+
+export interface ListCanvasesRequest {
+  type: 'listCanvases';
+  id: string;
+}
+
+export interface ListCanvasesResponse {
+  type: 'listCanvasesResult';
+  id: string;
+  success: boolean;
+  activeCanvasId?: string;
+  canvases?: CanvasMetadata[];
+  error?: string;
+}
+
+// ============================================================================
+// Create Canvas
+// ============================================================================
+
+export interface CreateCanvasParams {
+  name: string;
+  switchTo?: boolean;
+}
+
+export interface CreateCanvasRequest {
+  type: 'createCanvas';
+  id: string;
+  params: CreateCanvasParams;
+}
+
+export interface CreateCanvasResponse {
+  type: 'createCanvasResult';
+  id: string;
+  success: boolean;
+  canvas?: CanvasMetadata;
+  error?: string;
+}
+
+// ============================================================================
+// Switch Canvas
+// ============================================================================
+
+export interface SwitchCanvasParams {
+  name: string;
+}
+
+export interface SwitchCanvasRequest {
+  type: 'switchCanvas';
+  id: string;
+  params: SwitchCanvasParams;
+}
+
+export interface SwitchCanvasResponse {
+  type: 'switchCanvasResult';
+  id: string;
+  success: boolean;
+  canvas?: CanvasMetadata;
+  error?: string;
+}
+
+// ============================================================================
+// Rename Canvas
+// ============================================================================
+
+export interface RenameCanvasParams {
+  newName: string;
+}
+
+export interface RenameCanvasRequest {
+  type: 'renameCanvas';
+  id: string;
+  params: RenameCanvasParams;
+}
+
+export interface RenameCanvasResponse {
+  type: 'renameCanvasResult';
+  id: string;
+  success: boolean;
+  canvas?: CanvasMetadata;
+  error?: string;
+}
+
+// ============================================================================
 // Base Messages
 // ============================================================================
 
@@ -465,6 +566,10 @@ export interface ExportImageResponse {
 
 export type RequestMessage =
   | PingMessage
+  | ListCanvasesRequest
+  | CreateCanvasRequest
+  | SwitchCanvasRequest
+  | RenameCanvasRequest
   | AddShapeRequest
   | AddTextRequest
   | AddLineRequest
@@ -483,6 +588,10 @@ export type RequestMessage =
 
 export type ResponseMessage =
   | PongMessage
+  | ListCanvasesResponse
+  | CreateCanvasResponse
+  | SwitchCanvasResponse
+  | RenameCanvasResponse
   | AddShapeResponse
   | AddTextResponse
   | AddLineResponse
@@ -503,6 +612,10 @@ export type Message = RequestMessage | ResponseMessage;
 
 const MESSAGE_TYPES = [
   'ping', 'pong',
+  'listCanvases', 'listCanvasesResult',
+  'createCanvas', 'createCanvasResult',
+  'switchCanvas', 'switchCanvasResult',
+  'renameCanvas', 'renameCanvasResult',
   'addShape', 'addShapeResult',
   'addText', 'addTextResult',
   'addLine', 'addLineResult',

@@ -1,6 +1,84 @@
 export const WS_PORT = 7890;
 
 // ============================================================================
+// Canvas Metadata
+// ============================================================================
+
+export interface CanvasMetadata {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CanvasListState {
+  activeCanvasId: string;
+  canvases: CanvasMetadata[];
+}
+
+// ============================================================================
+// List Canvases
+// ============================================================================
+
+export interface ListCanvasesResponse {
+  type: 'listCanvasesResult';
+  id: string;
+  success: boolean;
+  activeCanvasId?: string;
+  canvases?: CanvasMetadata[];
+  error?: string;
+}
+
+// ============================================================================
+// Create Canvas
+// ============================================================================
+
+export interface CreateCanvasParams {
+  name: string;
+  switchTo?: boolean;
+}
+
+export interface CreateCanvasResponse {
+  type: 'createCanvasResult';
+  id: string;
+  success: boolean;
+  canvas?: CanvasMetadata;
+  error?: string;
+}
+
+// ============================================================================
+// Switch Canvas
+// ============================================================================
+
+export interface SwitchCanvasParams {
+  name: string;
+}
+
+export interface SwitchCanvasResponse {
+  type: 'switchCanvasResult';
+  id: string;
+  success: boolean;
+  canvas?: CanvasMetadata;
+  error?: string;
+}
+
+// ============================================================================
+// Rename Canvas
+// ============================================================================
+
+export interface RenameCanvasParams {
+  newName: string;
+}
+
+export interface RenameCanvasResponse {
+  type: 'renameCanvasResult';
+  id: string;
+  success: boolean;
+  canvas?: CanvasMetadata;
+  error?: string;
+}
+
+// ============================================================================
 // Add Shape
 // ============================================================================
 

@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.7.0"
+  version: "0.8.0"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -23,16 +23,16 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.7.0
+  bun add -g @agent-canvas/cli@0.8.0
   # or
-  npm install -g @agent-canvas/cli@0.7.0
+  npm install -g @agent-canvas/cli@0.8.0
   ```
 
-- **If installed but version differs from 0.7.0**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.7.0`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.7.0`
+- **If installed but version differs from 0.8.0**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.8.0`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.8.0`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.7.0
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.8.0
 
 ## Quick Start
 
@@ -48,9 +48,28 @@ which agent-canvas && agent-canvas --version
 ### Start Canvas
 ```bash
 agent-canvas start                    # Start server and open browser
-agent-canvas start -f file.excalidraw # Load existing file on start
 ```
-**When loading from file (`-f`)**: Remember the file path and save back to it with `agent-canvas save <original-file>`.
+
+### Load File
+```bash
+agent-canvas load file.excalidraw     # Load .excalidraw file into current canvas
+```
+**When loading from file**: Remember the file path and save back to it with `agent-canvas save <original-file>`.
+
+### Canvas Management
+The canvas supports multiple canvases. Each canvas is stored independently and can be switched between.
+
+```bash
+agent-canvas list                     # List all canvases (* marks active)
+agent-canvas new -n "Name" [--use]    # Create new canvas, optionally switch to it
+agent-canvas use "Name"               # Switch to canvas by name
+agent-canvas rename "New Name"        # Rename current canvas
+```
+
+**Notes:**
+- Canvas names are case-insensitive and must be unique
+- Delete canvases via UI (hover over canvas in sidebar, click "..." menu)
+- Each canvas has its own scene data; switching automatically saves current canvas
 
 ### Add Text
 ```bash

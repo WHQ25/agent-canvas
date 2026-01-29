@@ -19,6 +19,10 @@ import type {
   SaveSceneResponse,
   ExportImageResponse,
   ClearCanvasResponse,
+  ListCanvasesResponse,
+  CreateCanvasResponse,
+  SwitchCanvasResponse,
+  RenameCanvasResponse,
 } from './lib/protocol.js';
 
 const program = new Command();
@@ -26,14 +30,21 @@ const program = new Command();
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.7.0');
+  .version('0.8.0');
 
 program
   .command('start')
   .description('Start the canvas server and open in browser')
-  .option('-f, --file <path>', 'Load an .excalidraw file on start')
-  .action(async (options) => {
-    await start(options.file);
+  .action(async () => {
+    await start();
+  });
+
+program
+  .command('load [filepath]')
+  .description('Load an .excalidraw file into the current canvas')
+  .action(async (filepath) => {
+    const { loadFile } = await import('./commands/start.js');
+    await loadFile(filepath);
   });
 
 // ============================================================================
@@ -691,6 +702,103 @@ program
     });
     if (result.success) {
       console.log('Canvas cleared');
+    } else {
+      console.error(`Failed: ${result.error}`);
+      process.exit(1);
+    }
+    client.close();
+  });
+
+// ============================================================================
+// List Canvases
+// ============================================================================
+program
+  .command('list')
+  .description('List all canvases')
+  .action(async () => {
+    const client = await connectToCanvas();
+    const result = await client.send<ListCanvasesResponse>({
+      type: 'listCanvases',
+      id: generateId(),
+    });
+    if (result.success && result.canvases) {
+      console.log('Canvases:');
+      for (const canvas of result.canvases) {
+        const marker = canvas.id === result.activeCanvasId ? ' *' : '  ';
+        const date = new Date(canvas.updatedAt).toLocaleString();
+        console.log(`${marker} ${canvas.name} (updated: ${date})`);
+      }
+    } else {
+      console.error(`Failed: ${result.error}`);
+      process.exit(1);
+    }
+    client.close();
+  });
+
+// ============================================================================
+// Create Canvas
+// ============================================================================
+program
+  .command('new')
+  .description('Create a new canvas')
+  .requiredOption('-n, --name <name>', 'Name for the new canvas')
+  .option('--use', 'Switch to the new canvas after creation')
+  .action(async (options) => {
+    const client = await connectToCanvas();
+    const result = await client.send<CreateCanvasResponse>({
+      type: 'createCanvas',
+      id: generateId(),
+      params: { name: options.name, switchTo: options.use ?? false },
+    });
+    if (result.success && result.canvas) {
+      const switched = options.use ? ' and switched to it' : '';
+      console.log(`Canvas "${result.canvas.name}" created${switched}`);
+    } else {
+      console.error(`Failed: ${result.error}`);
+      process.exit(1);
+    }
+    client.close();
+  });
+
+// ============================================================================
+// Switch Canvas
+// ============================================================================
+program
+  .command('use')
+  .description('Switch to a canvas by name')
+  .argument('<name>', 'Canvas name to switch to')
+  .action(async (name: string) => {
+    const client = await connectToCanvas();
+    const result = await client.send<SwitchCanvasResponse>({
+      type: 'switchCanvas',
+      id: generateId(),
+      params: { name },
+    });
+    if (result.success && result.canvas) {
+      console.log(`Switched to canvas "${result.canvas.name}"`);
+    } else {
+      console.error(`Failed: ${result.error}`);
+      process.exit(1);
+    }
+    client.close();
+  });
+
+// ============================================================================
+// Rename Canvas
+// ============================================================================
+program
+  .command('rename')
+  .description('Rename the current canvas')
+  .argument('<name>', 'New name for the canvas')
+  .action(async (name: string) => {
+    const client = await connectToCanvas();
+    const result = await client.send<RenameCanvasResponse>({
+      type: 'renameCanvas',
+      id: generateId(),
+      params: { newName: name },
+    });
+    if (result.success && result.canvas) {
+      console.log(`Canvas renamed to "${result.canvas.name}"`);
     } else {
       console.error(`Failed: ${result.error}`);
       process.exit(1);
