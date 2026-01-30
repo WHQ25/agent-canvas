@@ -29,6 +29,8 @@
     "dev": "bun run src/index.ts",
     "build": "tsc && mkdir -p ./dist/static && cp -r ../web-app/dist/* ./dist/static/",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "link:dev": "bash -c 'ln -sf \"$(pwd)/bin/agent-canvas.js\" \"$(dirname $(which agent-canvas))/agent-canvas-dev\" && echo \"Linked: agent-canvas-dev -> $(pwd)/bin/agent-canvas.js\"'",
     "unlink:dev": "bash -c 'rm -f \"$(dirname $(which agent-canvas))/agent-canvas-dev\" && echo \"Unlinked agent-canvas-dev\"'"
   },
@@ -40,6 +42,7 @@
   "devDependencies": {
     "@agent-canvas/web-app": "workspace:*",
     "@types/ws": "^8.5.14",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.18"
   }
 }

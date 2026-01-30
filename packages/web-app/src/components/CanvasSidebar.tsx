@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Plus, PanelLeftClose, GripVertical } from 'lucide-react';
+import { Plus, PanelLeftClose, GripVertical, Bot } from 'lucide-react';
 import type { CanvasMetadata } from '../protocol';
 import type { CanvasSceneData } from '../lib/canvas-storage';
 import { CanvasThumbnail } from './CanvasThumbnail';
@@ -10,6 +10,7 @@ const UI_FONT = 'Assistant, system-ui, BlinkMacSystemFont, -apple-system, Segoe 
 interface CanvasSidebarProps {
   canvases: CanvasMetadata[];
   activeCanvasId: string;
+  agentActiveCanvasId: string | null;
   scenes: Map<string, CanvasSceneData | null>;
   isDarkMode?: boolean;
   canvasBackgroundColor?: string;
@@ -39,6 +40,7 @@ function formatRelativeTime(timestamp: number): string {
 interface CanvasItemProps {
   canvas: CanvasMetadata;
   isActive: boolean;
+  isAgentActive: boolean;
   scene: CanvasSceneData | null;
   isDarkMode?: boolean;
   onSelect: () => void;
@@ -49,6 +51,7 @@ interface CanvasItemProps {
 function CanvasItem({
   canvas,
   isActive,
+  isAgentActive,
   scene,
   isDarkMode,
   onSelect,
@@ -77,17 +80,22 @@ function CanvasItem({
     }
   }, [handleSubmitRename, canvas.name]);
 
+  // Border color: purple for user-active canvas, subtle gray for inactive in light mode
+  const borderColor = isActive ? '#6965db' : (isDarkMode ? 'transparent' : '#e0e0e0');
+
   const containerStyle: React.CSSProperties = {
     marginBottom: 8,
     borderRadius: 6,
     cursor: 'pointer',
-    border: isActive ? '2px solid #6965db' : '2px solid transparent',
+    border: `1px solid ${borderColor}`,
     backgroundColor: isDarkMode ? '#2d2d2d' : '#fff',
     overflow: 'hidden',
+    position: 'relative',
   };
 
   const contentStyle: React.CSSProperties = {
     padding: '6px 8px 8px',
+    borderTop: isDarkMode ? 'none' : '1px solid #eee',
   };
 
   const nameStyle: React.CSSProperties = {
@@ -192,7 +200,10 @@ function CanvasItem({
         )}
 
         <div style={timeRowStyle}>
-        <span style={timeStyle}>{formatRelativeTime(canvas.updatedAt)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {isAgentActive && <Bot size={12} color="#40c057" />}
+          <span style={timeStyle}>{formatRelativeTime(canvas.updatedAt)}</span>
+        </div>
         {!isEditing && (
           <div style={{ ...menuContainerStyle, visibility: (isHovered || showMenu) ? 'visible' : 'hidden' }}>
             <button
@@ -250,6 +261,7 @@ function CanvasItem({
 export function CanvasSidebar({
   canvases,
   activeCanvasId,
+  agentActiveCanvasId,
   scenes,
   isDarkMode,
   canvasBackgroundColor,
@@ -362,6 +374,7 @@ export function CanvasSidebar({
             key={canvas.id}
             canvas={canvas}
             isActive={canvas.id === activeCanvasId}
+            isAgentActive={canvas.id === agentActiveCanvasId}
             scene={scenes.get(canvas.id) || null}
             isDarkMode={isDarkMode}
             onSelect={() => onSelectCanvas(canvas.id)}

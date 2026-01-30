@@ -29,7 +29,8 @@ export interface ListCanvasesResponse {
   type: 'listCanvasesResult';
   id: string;
   success: boolean;
-  activeCanvasId?: string;
+  activeCanvasId?: string;        // User's active canvas
+  agentActiveCanvasId?: string;   // Agent's active canvas
   canvases?: CanvasMetadata[];
   error?: string;
 }
@@ -302,6 +303,40 @@ export interface AddPolygonResponse {
 }
 
 // ============================================================================
+// Add Image
+// ============================================================================
+
+export interface AddImageParams {
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  dataUrl: string;      // Base64 DataURL (e.g., "data:image/png;base64,...")
+  mimeType: string;     // image/png, image/jpeg, image/svg+xml, image/gif, image/webp
+  fileId: string;       // Unique file identifier (SHA-1 hash or nanoid)
+  customData?: Record<string, unknown>;
+}
+
+export interface AddImageRequest {
+  type: 'addImage';
+  id: string;
+  params: AddImageParams;
+}
+
+export interface AddImageResponse {
+  type: 'addImageResult';
+  id: string;
+  success: boolean;
+  elementId?: string;
+  fileId?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  error?: string;
+}
+
+// ============================================================================
 // Delete Elements
 // ============================================================================
 
@@ -469,6 +504,8 @@ export interface SceneElement {
   points?: number[][];
   startArrowhead?: string | null;
   endArrowhead?: string | null;
+  // For image elements
+  fileId?: string | null;
   // Custom data
   customData?: Record<string, unknown>;
 }
@@ -575,6 +612,7 @@ export type RequestMessage =
   | AddLineRequest
   | AddArrowRequest
   | AddPolygonRequest
+  | AddImageRequest
   | DeleteElementsRequest
   | RotateElementsRequest
   | GroupElementsRequest
@@ -597,6 +635,7 @@ export type ResponseMessage =
   | AddLineResponse
   | AddArrowResponse
   | AddPolygonResponse
+  | AddImageResponse
   | DeleteElementsResponse
   | RotateElementsResponse
   | GroupElementsResponse
@@ -621,6 +660,7 @@ const MESSAGE_TYPES = [
   'addLine', 'addLineResult',
   'addArrow', 'addArrowResult',
   'addPolygon', 'addPolygonResult',
+  'addImage', 'addImageResult',
   'deleteElements', 'deleteElementsResult',
   'rotateElements', 'rotateElementsResult',
   'groupElements', 'groupElementsResult',
