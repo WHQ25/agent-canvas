@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.8.1"
+  version: "0.9.0"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -23,16 +23,16 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.8.1
+  bun add -g @agent-canvas/cli@0.9.0
   # or
-  npm install -g @agent-canvas/cli@0.8.1
+  npm install -g @agent-canvas/cli@0.9.0
   ```
 
-- **If installed but version differs from 0.8.1**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.8.1`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.8.1`
+- **If installed but version differs from 0.9.0**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.9.0`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.9.0`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.8.1
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.9.0
 
 ## Quick Start
 
@@ -183,6 +183,15 @@ agent-canvas add-arrow -x 175 -y 520 --end-x 175 --end-y 280 --arrow-type elbow 
 ```bash
 agent-canvas add-polygon -p '[{"x":0,"y":0},{"x":100,"y":0},{"x":50,"y":100}]'
 ```
+
+#### Image
+```bash
+agent-canvas add-image -f <path> -x <x> -y <y> [-w <width>] [-h <height>] [-n <note>]
+```
+- Supported formats: PNG, JPEG, GIF, SVG, WebP
+- Width/height default to original image dimensions; specify one to scale proportionally
+- Image data is embedded as base64 in the canvas (stored in browser IndexedDB)
+- **Returns**: `Image added (id: <id>, x: <x>, y: <y>, <width>x<height>)`
 
 ### Manipulate Elements
 ```bash
