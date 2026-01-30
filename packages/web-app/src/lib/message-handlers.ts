@@ -639,7 +639,12 @@ export async function handleDeleteElements(
     const updatedElements = elements.map(e => {
       if (idsToDelete.has(e.id)) {
         deletedCount++;
-        return { ...e, isDeleted: true };
+        return {
+          ...e,
+          isDeleted: true,
+          version: (e.version ?? 0) + 1,
+          versionNonce: Math.floor(Math.random() * 2147483647),
+        };
       }
       return e;
     });
@@ -711,7 +716,12 @@ export async function handleRotateElements(
     const updatedElements = elements.map(e => {
       // Handle bound text elements
       if (boundTextAngles.has(e.id)) {
-        return { ...e, angle: boundTextAngles.get(e.id) };
+        return {
+          ...e,
+          angle: boundTextAngles.get(e.id),
+          version: (e.version ?? 0) + 1,
+          versionNonce: Math.floor(Math.random() * 2147483647),
+        };
       }
 
       const shouldRotate = idsToRotate.has(e.id) ||
@@ -719,7 +729,12 @@ export async function handleRotateElements(
 
       if (shouldRotate) {
         rotatedCount++;
-        return { ...e, angle: (e.angle ?? 0) + angleInRadians };
+        return {
+          ...e,
+          angle: (e.angle ?? 0) + angleInRadians,
+          version: (e.version ?? 0) + 1,
+          versionNonce: Math.floor(Math.random() * 2147483647),
+        };
       }
       return e;
     });
@@ -769,7 +784,12 @@ export async function handleGroupElements(
 
     const updatedElements = elements.map(e => {
       if (idsToGroup.has(e.id)) {
-        return { ...e, groupIds: [...(e.groupIds ?? []), newGroupId] };
+        return {
+          ...e,
+          groupIds: [...(e.groupIds ?? []), newGroupId],
+          version: (e.version ?? 0) + 1,
+          versionNonce: Math.floor(Math.random() * 2147483647),
+        };
       }
       return e;
     });
@@ -816,7 +836,12 @@ export async function handleUngroupElement(
 
     const updatedElements = elements.map(e => {
       if (e.id === params.elementId) {
-        return { ...e, groupIds: e.groupIds?.slice(0, -1) ?? [] };
+        return {
+          ...e,
+          groupIds: e.groupIds?.slice(0, -1) ?? [],
+          version: (e.version ?? 0) + 1,
+          versionNonce: Math.floor(Math.random() * 2147483647),
+        };
       }
       return e;
     });
@@ -877,7 +902,13 @@ export async function handleMoveElements(
 
       if (shouldMove) {
         movedCount++;
-        return { ...e, x: (e.x ?? 0) + params.deltaX, y: (e.y ?? 0) + params.deltaY };
+        return {
+          ...e,
+          x: (e.x ?? 0) + params.deltaX,
+          y: (e.y ?? 0) + params.deltaY,
+          version: (e.version ?? 0) + 1,
+          versionNonce: Math.floor(Math.random() * 2147483647),
+        };
       }
       return e;
     });
@@ -925,13 +956,13 @@ export async function handleResizeElements(
     const { elements, scene } = await getElements(ctx, deps);
 
     const idsToResize = new Set(params.elementIds);
-    const SHAPE_TYPES = ['rectangle', 'ellipse', 'diamond'];
+    const RESIZABLE_TYPES = ['rectangle', 'ellipse', 'diamond', 'image'];
     const BOUND_TEXT_PADDING = 5;
 
-    // Validate all elements are shapes
+    // Validate all elements are resizable types
     for (const el of elements) {
-      if (idsToResize.has(el.id) && !SHAPE_TYPES.includes(el.type)) {
-        return { type: 'resizeElementsResult', id, success: false, error: `Element ${el.id} is not a shape (type: ${el.type}). Only rectangle, ellipse, and diamond are supported.` };
+      if (idsToResize.has(el.id) && !RESIZABLE_TYPES.includes(el.type)) {
+        return { type: 'resizeElementsResult', id, success: false, error: `Element ${el.id} is not resizable (type: ${el.type}). Only rectangle, ellipse, diamond, and image are supported.` };
       }
     }
 
@@ -962,7 +993,15 @@ export async function handleResizeElements(
       updatedContainers.set(e.id, { x: newX, y: newY, width: newWidth, height: newHeight, type: e.type });
       resizedCount++;
 
-      return { ...e, x: newX, y: newY, width: newWidth, height: newHeight };
+      return {
+        ...e,
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight,
+        version: (e.version ?? 0) + 1,
+        versionNonce: Math.floor(Math.random() * 2147483647),
+      };
     });
 
     // Check for errors
@@ -1005,6 +1044,8 @@ export async function handleResizeElements(
         ...e,
         x: container.x + offsetX + (maxWidth - textWidth) / 2,
         y: container.y + offsetY + (maxHeight - textHeight) / 2,
+        version: (e.version ?? 0) + 1,
+        versionNonce: Math.floor(Math.random() * 2147483647),
       };
     });
 

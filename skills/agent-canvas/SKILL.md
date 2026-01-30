@@ -204,7 +204,7 @@ agent-canvas ungroup-element -i <id>
 ```
 
 **Resize Elements** (`resize-elements`):
-Expand or contract shape edges (rectangle, ellipse, diamond only). Values are in element's local coordinate system (respects rotation).
+Expand or contract element edges (rectangle, ellipse, diamond, image). Values are in element's local coordinate system (respects rotation).
 
 Examples:
 ```bash

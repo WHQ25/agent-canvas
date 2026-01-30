@@ -521,7 +521,7 @@ describe('handleResizeElements', () => {
     expect(result.error).toContain('must be non-zero');
   });
 
-  it('should reject resize for non-shape elements', async () => {
+  it('should reject resize for non-resizable elements', async () => {
     const ctx = createMockContext();
     ctx.api.getSceneElements = vi.fn(() => [
       { id: 'elem-1', type: 'line', x: 0, y: 0 } as ExcalidrawElement,
@@ -534,7 +534,25 @@ describe('handleResizeElements', () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('not a shape');
+    expect(result.error).toContain('not resizable');
+  });
+
+  it('should resize image elements', async () => {
+    const ctx = createMockContext();
+    ctx.api.getSceneElements = vi.fn(() => [
+      { id: 'img-1', type: 'image', x: 100, y: 100, width: 200, height: 150, angle: 0 } as ExcalidrawElement,
+    ]);
+    const deps = createMockDeps(ctx);
+
+    const result = await handleResizeElements(deps, 'req-1', {
+      elementIds: ['img-1'],
+      right: 50,
+      bottom: 30,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.resizedCount).toBe(1);
+    expect(ctx.api.updateScene).toHaveBeenCalled();
   });
 
   it('should reject resize that would result in negative dimensions', async () => {
@@ -551,6 +569,26 @@ describe('handleResizeElements', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('would be <= 0');
+  });
+
+  it('should increment version and update versionNonce for history tracking', async () => {
+    const ctx = createMockContext();
+    ctx.api.getSceneElements = vi.fn(() => [
+      { id: 'elem-1', type: 'rectangle', x: 0, y: 0, width: 100, height: 100, angle: 0, version: 5, versionNonce: 12345 } as ExcalidrawElement,
+    ]);
+    const deps = createMockDeps(ctx);
+
+    await handleResizeElements(deps, 'req-1', {
+      elementIds: ['elem-1'],
+      right: 50,
+    });
+
+    expect(ctx.api.updateScene).toHaveBeenCalled();
+    const updateCall = (ctx.api.updateScene as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const updatedElement = updateCall.elements[0];
+    expect(updatedElement.version).toBe(6);
+    expect(updatedElement.versionNonce).not.toBe(12345);
+    expect(typeof updatedElement.versionNonce).toBe('number');
   });
 });
 

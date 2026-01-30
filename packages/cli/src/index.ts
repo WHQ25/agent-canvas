@@ -286,7 +286,7 @@ program
 // ============================================================================
 program
   .command('resize-elements')
-  .description('Resize shape elements by expanding/contracting edges')
+  .description('Resize elements (shapes and images) by expanding/contracting edges')
   .requiredOption('-i, --element-ids <ids>', 'Comma-separated element IDs')
   .option('--top <number>', 'Expand top edge (positive = upward, negative = contract)', parseFloat)
   .option('--bottom <number>', 'Expand bottom edge (positive = downward, negative = contract)', parseFloat)

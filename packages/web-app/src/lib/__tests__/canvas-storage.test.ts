@@ -389,6 +389,60 @@ describe('deleteCanvasScene (IndexedDB)', () => {
     const files = await loadFilesForCanvas(canvasId);
     expect(Object.keys(files)).toHaveLength(0);
   });
+
+  it('should not delete files referenced by other canvases', async () => {
+    const sharedFileData: BinaryFileData = {
+      id: 'shared-file',
+      mimeType: 'image/png',
+      dataURL: 'data:image/png;base64,shared',
+      created: 1000,
+    };
+
+    // Save the same file to two canvases
+    await saveCanvasScene('canvas-a', {
+      elements: [],
+      files: { 'shared-file': sharedFileData },
+    });
+    await saveCanvasScene('canvas-b', {
+      elements: [],
+      files: { 'shared-file': sharedFileData },
+    });
+
+    // Delete canvas-a
+    await deleteCanvasScene('canvas-a');
+
+    // File should still be accessible from canvas-b
+    const filesB = await loadFilesForCanvas('canvas-b');
+    expect(filesB['shared-file']).toEqual(sharedFileData);
+  });
+
+  it('should delete unreferenced files from IndexedDB', async () => {
+    const { get, createStore } = await import('idb-keyval');
+    const filesStore = createStore('agent-canvas-files', 'files');
+
+    const uniqueFileData: BinaryFileData = {
+      id: 'unique-file',
+      mimeType: 'image/png',
+      dataURL: 'data:image/png;base64,unique',
+      created: 1000,
+    };
+
+    await saveCanvasScene('canvas-unique', {
+      elements: [],
+      files: { 'unique-file': uniqueFileData },
+    });
+
+    // Verify file exists in IndexedDB
+    const fileBefore = await get('unique-file', filesStore);
+    expect(fileBefore).toEqual(uniqueFileData);
+
+    // Delete canvas
+    await deleteCanvasScene('canvas-unique');
+
+    // File should be deleted from IndexedDB
+    const fileAfter = await get('unique-file', filesStore);
+    expect(fileAfter).toBeUndefined();
+  });
 });
 
 describe('saveFiles / loadFilesForCanvas (IndexedDB)', () => {
