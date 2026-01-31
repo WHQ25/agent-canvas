@@ -74,6 +74,7 @@ export interface ExcalidrawAPI {
 export interface StorageDeps {
   loadCanvasScene: (canvasId: string) => Promise<CanvasSceneData | null>;
   saveCanvasScene: (canvasId: string, data: CanvasSceneData) => Promise<void>;
+  loadFilesForCanvas: (canvasId: string) => Promise<Record<string, BinaryFileData>>;
 }
 
 /**

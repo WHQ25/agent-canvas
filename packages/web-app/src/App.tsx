@@ -240,12 +240,14 @@ export default function App() {
     // Load existing scene to preserve user's appState (scroll, zoom, theme, etc.)
     const existingScene = await loadCanvasScene(canvasId);
     const existingAppState = existingScene?.appState || {};
-    const existingFiles = existingScene?.files || {};
+    const existingFiles = files === undefined
+      ? await loadFilesForCanvas(canvasId)
+      : files;
 
     const sceneData: CanvasSceneData = {
       elements,
       appState: existingAppState,
-      files: files || existingFiles,
+      files: existingFiles,
     };
 
     await saveCanvasScene(canvasId, sceneData);
@@ -262,8 +264,8 @@ export default function App() {
     if (canvasId === activeCanvasIdRef.current && excalidrawAPIRef.current) {
       const userApi = excalidrawAPIRef.current;
       // Add files if present
-      if (files && Object.keys(files as object).length > 0) {
-        const filesArray = Object.values(files as Record<string, BinaryFileData>);
+      if (existingFiles && Object.keys(existingFiles as object).length > 0) {
+        const filesArray = Object.values(existingFiles as Record<string, BinaryFileData>);
         userApi.addFiles(filesArray);
       }
       userApi.updateScene({
@@ -393,9 +395,10 @@ export default function App() {
   // Handler: Rename canvas (current canvas)
   const handleRenameCanvas = useCallback((id: string, params: RenameCanvasParams) => {
     const state = canvasListStateRef.current;
+    const targetCanvasId = agentActiveCanvasIdRef.current ?? state.activeCanvasId;
 
     // Validate using pure function
-    const validation = validateRenameCanvas(state, params.newName, state.activeCanvasId);
+    const validation = validateRenameCanvas(state, params.newName, targetCanvasId);
     if (!validation.valid) {
       return { type: 'renameCanvasResult', id, success: false, error: validation.error };
     }
@@ -403,7 +406,7 @@ export default function App() {
     // Rename using pure function
     const { state: updatedState, canvas: renamedCanvas } = renameCanvasInState(
       state,
-      state.activeCanvasId,
+      targetCanvasId,
       params.newName
     );
     setCanvasListState(updatedState);
@@ -411,7 +414,7 @@ export default function App() {
 
     // Sync to Excalidraw appState.name
     const api = excalidrawAPIRef.current;
-    if (api && renamedCanvas) {
+    if (api && renamedCanvas && targetCanvasId === state.activeCanvasId) {
       api.updateScene({ appState: { name: renamedCanvas.name } });
     }
 
@@ -561,6 +564,10 @@ export default function App() {
       nextCanvas = state.canvases[currentIndex === 0 ? 1 : currentIndex - 1];
     }
 
+    if (agentActiveCanvasIdRef.current === canvasId) {
+      setAgentActiveCanvasId(nextCanvas.id);
+    }
+
     // If deleting active canvas, switch first
     if (canvasId === state.activeCanvasId) {
       const targetScene = await loadCanvasScene(nextCanvas.id);
@@ -627,6 +634,7 @@ export default function App() {
     storage: {
       loadCanvasScene,
       saveCanvasScene,
+      loadFilesForCanvas,
     },
     saveAndSync: saveAndSyncScene,
     CaptureUpdateAction: {

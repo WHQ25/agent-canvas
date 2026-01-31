@@ -24,6 +24,7 @@ import {
   handleClearCanvas,
   handleExportImage,
   formatError,
+  getElements,
   type ExportToBlobFn,
 } from '../message-handlers';
 
@@ -73,6 +74,7 @@ function createMockDeps(ctx?: HandlerContext | null, overrides?: Partial<Handler
     storage: {
       loadCanvasScene: vi.fn(async () => null),
       saveCanvasScene: vi.fn(async () => {}),
+      loadFilesForCanvas: vi.fn(async () => ({})),
     },
     saveAndSync: vi.fn(async () => {}),
     CaptureUpdateAction: {
@@ -102,6 +104,7 @@ describe('handleAddShape', () => {
       storage: {
         loadCanvasScene: vi.fn(async () => null),
         saveCanvasScene: vi.fn(async () => {}),
+        loadFilesForCanvas: vi.fn(async () => ({})),
       },
       saveAndSync: vi.fn(async () => {}),
       CaptureUpdateAction: {
@@ -605,6 +608,7 @@ describe('handlers with direct storage', () => {
       storage: {
         loadCanvasScene: vi.fn(async () => mockScene),
         saveCanvasScene: vi.fn(async () => {}),
+        loadFilesForCanvas: vi.fn(async () => ({})),
       },
     });
 
@@ -784,6 +788,7 @@ describe('handleReadScene', () => {
       storage: {
         loadCanvasScene: vi.fn(async () => mockScene),
         saveCanvasScene: vi.fn(async () => {}),
+        loadFilesForCanvas: vi.fn(async () => ({})),
       },
     });
 
@@ -842,13 +847,17 @@ describe('handleLoadScene', () => {
   it('should use direct storage when useDirectStorage is true', async () => {
     const ctx = createMockContext({ useDirectStorage: true });
     const deps = createMockDeps(ctx);
+    const files = {
+      'file-1': { id: 'file-1', dataURL: 'data:image/png;base64,test', mimeType: 'image/png', created: Date.now() },
+    };
 
     const result = await handleLoadScene(deps, 'req-1', {
       elements: [{ id: 'elem-1', type: 'rectangle', x: 0, y: 0 }],
+      files,
     });
 
     expect(result.success).toBe(true);
-    expect(deps.saveAndSync).toHaveBeenCalled();
+    expect(deps.saveAndSync).toHaveBeenCalledWith('test-canvas-id', [{ id: 'elem-1', type: 'rectangle', x: 0, y: 0 }], files);
   });
 
   it('should return error when context is not available', async () => {
@@ -903,13 +912,14 @@ describe('handleSaveScene', () => {
     const mockScene: CanvasSceneData = {
       elements: [{ id: 'elem-1', type: 'rectangle', x: 0, y: 0 } as unknown],
       appState: { theme: 'dark' },
-      files: { 'file-1': { id: 'file-1' } },
     };
+    const storedFiles = { 'file-1': { id: 'file-1', dataURL: 'data:image/png;base64,test', mimeType: 'image/png', created: Date.now() } };
     const ctx = createMockContext({ useDirectStorage: true });
     const deps = createMockDeps(ctx, {
       storage: {
         loadCanvasScene: vi.fn(async () => mockScene),
         saveCanvasScene: vi.fn(async () => {}),
+        loadFilesForCanvas: vi.fn(async () => storedFiles),
       },
     });
 
@@ -917,6 +927,7 @@ describe('handleSaveScene', () => {
 
     expect(result.success).toBe(true);
     expect(result.data?.appState).toEqual({ theme: 'dark' });
+    expect(result.data?.files).toEqual(storedFiles);
   });
 
   it('should return error when context is not available', async () => {
@@ -1044,6 +1055,52 @@ describe('handleExportImage', () => {
     );
   });
 
+  it('should include files when exporting', async () => {
+    const ctx = createMockContext();
+    ctx.api.getSceneElements = vi.fn(() => [
+      { id: 'img-1', type: 'image', x: 0, y: 0, fileId: 'file-1' } as ExcalidrawElement,
+    ]);
+    const fileData = {
+      id: 'file-1',
+      dataURL: 'data:image/png;base64,test',
+      mimeType: 'image/png',
+      created: Date.now(),
+    };
+    ctx.api.getFiles = vi.fn(() => ({ 'file-1': fileData }));
+    const deps = createMockDeps(ctx);
+    const mockExportToBlob = createMockExportToBlob();
+
+    await handleExportImage(deps, 'req-1', undefined, mockExportToBlob);
+
+    const call = (mockExportToBlob as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.files).toEqual({ 'file-1': fileData });
+  });
+
+  it('should include files from storage when using direct storage', async () => {
+    const ctx = createMockContext({ useDirectStorage: true });
+    const fileData = {
+      id: 'file-1',
+      dataURL: 'data:image/png;base64,test',
+      mimeType: 'image/png',
+      created: Date.now(),
+    };
+    const deps = createMockDeps(ctx, {
+      storage: {
+        loadCanvasScene: vi.fn(async () => ({
+          elements: [{ id: 'img-1', type: 'image', x: 0, y: 0, fileId: 'file-1' }],
+        })),
+        saveCanvasScene: vi.fn(async () => {}),
+        loadFilesForCanvas: vi.fn(async () => ({ 'file-1': fileData })),
+      },
+    });
+    const mockExportToBlob = createMockExportToBlob();
+
+    await handleExportImage(deps, 'req-1', undefined, mockExportToBlob);
+
+    const call = (mockExportToBlob as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.files).toEqual({ 'file-1': fileData });
+  });
+
   it('should return error when canvas is empty', async () => {
     const ctx = createMockContext();
     ctx.api.getSceneElements = vi.fn(() => []);
@@ -1096,5 +1153,50 @@ describe('handleExportImage', () => {
     expect(dimensions.scale).toBe(1);
     expect(dimensions.width).toBe(100);
     expect(dimensions.height).toBe(100);
+  });
+});
+
+// ============================================================================
+// getElements Tests
+// ============================================================================
+
+describe('getElements', () => {
+  it('should prefer files from storage when available', async () => {
+    const ctx = createMockContext({ useDirectStorage: true });
+    const scene: CanvasSceneData = {
+      elements: [{ id: 'elem-1', type: 'image', x: 0, y: 0 } as unknown],
+      files: { 'file-legacy': { id: 'file-legacy' } },
+    };
+    const storedFiles = { 'file-1': { id: 'file-1', dataURL: 'data:image/png;base64,test', mimeType: 'image/png', created: Date.now() } };
+    const deps = createMockDeps(ctx, {
+      storage: {
+        loadCanvasScene: vi.fn(async () => scene),
+        saveCanvasScene: vi.fn(async () => {}),
+        loadFilesForCanvas: vi.fn(async () => storedFiles),
+      },
+    });
+
+    const result = await getElements(ctx, deps);
+
+    expect(result.scene?.files).toEqual(storedFiles);
+  });
+
+  it('should fall back to scene files when storage returns empty', async () => {
+    const ctx = createMockContext({ useDirectStorage: true });
+    const scene: CanvasSceneData = {
+      elements: [{ id: 'elem-1', type: 'image', x: 0, y: 0 } as unknown],
+      files: { 'file-legacy': { id: 'file-legacy' } },
+    };
+    const deps = createMockDeps(ctx, {
+      storage: {
+        loadCanvasScene: vi.fn(async () => scene),
+        saveCanvasScene: vi.fn(async () => {}),
+        loadFilesForCanvas: vi.fn(async () => ({})),
+      },
+    });
+
+    const result = await getElements(ctx, deps);
+
+    expect(result.scene?.files).toEqual(scene.files);
   });
 });

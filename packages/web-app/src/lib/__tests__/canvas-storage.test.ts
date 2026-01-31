@@ -480,7 +480,7 @@ describe('saveFiles / loadFilesForCanvas (IndexedDB)', () => {
     expect(loaded).toEqual(files);
   });
 
-  it('should append new files to existing files', async () => {
+  it('should replace existing file mapping with latest files', async () => {
     const canvasId = 'append-test';
     const files1: Record<string, BinaryFileData> = {
       'file-1': {
@@ -503,8 +503,7 @@ describe('saveFiles / loadFilesForCanvas (IndexedDB)', () => {
     await saveFiles(canvasId, files2);
     const loaded = await loadFilesForCanvas(canvasId);
 
-    expect(Object.keys(loaded)).toHaveLength(2);
-    expect(loaded['file-1']).toEqual(files1['file-1']);
+    expect(Object.keys(loaded)).toHaveLength(1);
     expect(loaded['file-2']).toEqual(files2['file-2']);
   });
 
@@ -515,6 +514,26 @@ describe('saveFiles / loadFilesForCanvas (IndexedDB)', () => {
 
     // Empty files should not create mapping
     expect(loaded).toEqual({});
+  });
+
+  it('should remove file mapping when saving empty files', async () => {
+    const { get, createStore } = await import('idb-keyval');
+    const filesStore = createStore('agent-canvas-files', 'files');
+    const canvasId = 'empty-files-mapping';
+    const files: Record<string, BinaryFileData> = {
+      'file-1': {
+        id: 'file-1',
+        mimeType: 'image/png',
+        dataURL: 'data:image/png;base64,abc',
+        created: 1000,
+      },
+    };
+
+    await saveFiles(canvasId, files);
+    await saveFiles(canvasId, {});
+
+    const mapping = await get(`files-${canvasId}`, filesStore);
+    expect(mapping).toBeUndefined();
   });
 });
 

@@ -61,7 +61,10 @@ export async function getElements(
 ): Promise<{ elements: readonly ExcalidrawElement[]; scene: CanvasSceneData | null }> {
   if (ctx.useDirectStorage) {
     const scene = await deps.storage.loadCanvasScene(ctx.canvasId);
-    return { elements: (scene?.elements || []) as ExcalidrawElement[], scene };
+    const files = await deps.storage.loadFilesForCanvas(ctx.canvasId);
+    const mergedFiles = Object.keys(files).length > 0 ? files : (scene?.files ?? files);
+    const sceneWithFiles = scene ? { ...scene, files: mergedFiles } : null;
+    return { elements: (scene?.elements || []) as ExcalidrawElement[], scene: sceneWithFiles };
   }
   return { elements: ctx.api.getSceneElements(), scene: null };
 }
@@ -1270,7 +1273,7 @@ export async function handleExportImage(
   }
 
   try {
-    const { elements } = await getElements(ctx, deps);
+    const { elements, scene } = await getElements(ctx, deps);
     const visibleElements = elements.filter(e => !e.isDeleted);
 
     if (visibleElements.length === 0) {
@@ -1278,10 +1281,11 @@ export async function handleExportImage(
     }
 
     const scale = params?.scale ?? 1;
+    const files = ctx.useDirectStorage ? (scene?.files ?? {}) : ctx.api.getFiles();
 
     const blob = await exportToBlob({
       elements: visibleElements as unknown[],
-      files: null,
+      files,
       appState: {
         exportBackground: params?.background ?? true,
         exportEmbedScene: params?.embedScene ?? false,

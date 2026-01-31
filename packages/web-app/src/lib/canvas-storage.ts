@@ -85,7 +85,7 @@ export async function saveCanvasScene(canvasId: string, data: CanvasSceneData): 
     await set(canvasId, sceneWithoutFiles, scenesStore);
 
     // Save files separately
-    if (files && Object.keys(files).length > 0) {
+    if (files) {
       await saveFiles(canvasId, files);
     }
   } catch (error) {
@@ -106,9 +106,12 @@ export async function deleteCanvasScene(canvasId: string): Promise<void> {
 // Save files associated with a canvas
 export async function saveFiles(canvasId: string, files: Record<string, BinaryFileData>): Promise<void> {
   try {
-    // Get existing file mapping for this canvas
-    const existingMapping = await get<string[]>(`files-${canvasId}`, filesStore) || [];
     const newFileIds = Object.keys(files);
+
+    if (newFileIds.length === 0) {
+      await del(`files-${canvasId}`, filesStore);
+      return;
+    }
 
     // Save each file
     for (const [fileId, fileData] of Object.entries(files)) {
@@ -116,8 +119,7 @@ export async function saveFiles(canvasId: string, files: Record<string, BinaryFi
     }
 
     // Update file mapping for this canvas
-    const allFileIds = [...new Set([...existingMapping, ...newFileIds])];
-    await set(`files-${canvasId}`, allFileIds, filesStore);
+    await set(`files-${canvasId}`, newFileIds, filesStore);
   } catch (error) {
     console.error('Failed to save files:', error);
   }
