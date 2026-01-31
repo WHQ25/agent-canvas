@@ -63,6 +63,7 @@ import {
   generateUniqueCanvasName,
   type CanvasSceneData,
 } from './lib/canvas-storage';
+import { collectUsedFiles } from './lib/file-utils';
 
 import { CanvasSidebar } from './components/CanvasSidebar';
 
@@ -290,7 +291,11 @@ export default function App() {
     const state = canvasListStateRef.current;
     const elements = api.getSceneElements();
     const appState = api.getAppState();
-    const files = api.getFiles();
+    const allFiles = api.getFiles() as Record<string, BinaryFileData>;
+    const files = collectUsedFiles(
+      elements as Array<{ type?: string; fileId?: string; isDeleted?: boolean }>,
+      allFiles
+    );
     const filteredAppState = filterAppState(appState);
 
     const sceneData: CanvasSceneData = {
@@ -847,23 +852,15 @@ export default function App() {
       // Use getSceneElementsIncludingDeleted to include deleted elements for proper sync
       const allElements = api.getSceneElementsIncludingDeleted();
       const appState = api.getAppState();
-      const allFiles = api.getFiles();
+      const allFiles = api.getFiles() as Record<string, BinaryFileData>;
       const filteredAppState = filterAppState(appState);
 
       // Only save files that are actually used by elements in this canvas
       // This prevents files from being incorrectly associated with multiple canvases
-      const usedFileIds = new Set<string>();
-      for (const el of allElements as Array<{ type?: string; fileId?: string; isDeleted?: boolean }>) {
-        if (el.type === 'image' && el.fileId && !el.isDeleted) {
-          usedFileIds.add(el.fileId);
-        }
-      }
-      const files: Record<string, BinaryFileData> = {};
-      for (const fileId of usedFileIds) {
-        if (allFiles[fileId]) {
-          files[fileId] = allFiles[fileId];
-        }
-      }
+      const files = collectUsedFiles(
+        allElements as Array<{ type?: string; fileId?: string; isDeleted?: boolean }>,
+        allFiles
+      );
 
       const sceneData: CanvasSceneData = {
         elements: allElements as unknown[],
