@@ -27,7 +27,7 @@ const program = new Command();
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.9.2');
+  .version('0.9.3');
 
 program
   .command('start')
@@ -61,6 +61,7 @@ program
   .option('--fill-style <style>', 'Fill style: hachure, cross-hatch, solid, or zigzag')
   .option('-l, --label <text>', 'Text label inside the shape')
   .option('--label-font-size <number>', 'Label font size', parseFloat)
+  .option('--label-stroke-color <color>', 'Label text color (hex, defaults to --stroke-color)')
   .option('-n, --note <text>', 'Note for this element (stored in customData)')
   .action(async (options) => {
     await addShape({
@@ -76,6 +77,7 @@ program
       fillStyle: options.fillStyle,
       label: options.label,
       labelFontSize: options.labelFontSize,
+      labelStrokeColor: options.labelStrokeColor,
       note: options.note,
     }, addShapeDeps);
   });

@@ -14,6 +14,7 @@ export interface AddShapeOptions {
   fillStyle?: 'hachure' | 'cross-hatch' | 'solid' | 'zigzag';
   label?: string;
   labelFontSize?: number;
+  labelStrokeColor?: string;
   note?: string;
 }
 
@@ -58,7 +59,11 @@ export async function addShape(options: AddShapeOptions, deps: AddShapeDeps = de
   };
 
   if (options.label) {
-    params.label = { text: options.label, fontSize: options.labelFontSize };
+    params.label = {
+      text: options.label,
+      fontSize: options.labelFontSize,
+      strokeColor: options.labelStrokeColor,
+    };
   }
 
   const result = await client.send<AddShapeResponse>({

@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.9.2"
+  version: "0.9.3"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -23,16 +23,16 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.9.2
+  bun add -g @agent-canvas/cli@0.9.3
   # or
-  npm install -g @agent-canvas/cli@0.9.2
+  npm install -g @agent-canvas/cli@0.9.3
   ```
 
-- **If installed but version differs from 0.9.2**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.9.2`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.9.2`
+- **If installed but version differs from 0.9.3**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.9.3`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.9.3`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.9.2
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.9.3
 
 ## Quick Start
 
@@ -117,6 +117,7 @@ agent-canvas add-shape -t <type> -x <x> -y <y> [-w <width>] [-h <height>] [-l <l
 ```
 - Types: `rectangle`, `ellipse`, `diamond`
 - Use `-l/--label` to add text inside the shape (fontSize: 16 by default), `--label-font-size <n>` to adjust
+- Label color inherits from `--stroke-color` by default; use `--label-stroke-color <hex>` to override
 - **Returns**: `Shape created (id: <id> x=<x> y=<y> w=<width> h=<height>)` — actual dimensions after auto-sizing for labels
 
 **⚠️ Label Sizing - CRITICAL: Calculate BEFORE drawing**
@@ -274,7 +275,7 @@ agent-canvas clear                # Clear all elements from the canvas
 
 1. **Coordinates**: Origin (0,0) is top-left. X→right, Y→down. Colors in hex (`#FF5733`) or `transparent`.
 
-2. **Workflow**: Read canvas → Plan layout → Draw shapes → Add arrows/lines → **Adjust**.
+2. **Workflow**: Read canvas → Plan layout → Draw shapes → Add arrows/lines(if necessary) → **Adjust**.
    - **IMPORTANT**: Canvas content is auto-saved to browser localStorage. Always run `agent-canvas read` first to check for existing content before drawing.
    - If old content exists, ask the user whether to: (a) continue editing, (b) clear and start fresh, or (c) save/export first then clear.
    - Shapes define the layout and provide exact coordinates
@@ -282,7 +283,7 @@ agent-canvas clear                # Clear all elements from the canvas
    - **Adjust**: After initial draft, run `read` and `export` to review. Check against Design Philosophy:
      - Alignment issues? → `move-elements` to snap to grid
      - Inconsistent spacing? → `move-elements` to equalize gaps
-     - Overlapping elements? → `move-elements` or `delete-elements`
+     - Overlapping elements? → `move-elements` or `delete-elements` and redraw
      - Wrong sizes? → `delete-elements` and redraw
      - Misaligned arrows? → `delete-elements` and redraw with correct endpoints
      - Container size issue? → `resize-elements` to adjust to perfect size 
