@@ -3,7 +3,8 @@
   "tasks": {
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": ["VITE_WS_PORT", "VITE_DEV_PORT", "AGENT_CANVAS_WS_PORT", "AGENT_CANVAS_HTTP_PORT"]
     },
     "build": {
       "dependsOn": ["^build"],

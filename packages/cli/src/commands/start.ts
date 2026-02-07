@@ -32,10 +32,12 @@ export async function start(): Promise<void> {
 
   const browserConnected = await isBrowserConnected();
   if (browserConnected) {
-    console.log('Canvas already running at http://localhost:7891');
+    const httpPort = process.env.AGENT_CANVAS_HTTP_PORT || '7891';
+    console.log(`Canvas already running at http://localhost:${httpPort}`);
   } else {
+    const httpPort = process.env.AGENT_CANVAS_HTTP_PORT || '7891';
     console.log('Opening browser...');
-    await openBrowser('http://localhost:7891');
+    await openBrowser(`http://localhost:${httpPort}`);
   }
 
   // Keep the server running

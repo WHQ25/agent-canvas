@@ -1,6 +1,6 @@
 {
   "name": "@agent-canvas/cli",
-  "version": "0.9.3",
+  "version": "0.10.0",
   "description": "CLI tool for Agent Canvas - Excalidraw interface for AI agents",
   "license": "MIT",
   "repository": {

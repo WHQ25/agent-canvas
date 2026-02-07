@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Plus, PanelLeftClose, GripVertical, Bot } from 'lucide-react';
-import type { CanvasMetadata } from '../protocol';
+import { Plus, PanelLeftClose, GripVertical, Bot, ChevronRight, ChevronDown, FolderPlus } from 'lucide-react';
+import type { CanvasMetadata, CanvasCategory } from '../protocol';
 import type { CanvasSceneData } from '../lib/canvas-storage';
 import { CanvasThumbnail } from './CanvasThumbnail';
 
@@ -12,6 +12,8 @@ interface CanvasSidebarProps {
   activeCanvasId: string;
   agentActiveCanvasId: string | null;
   scenes: Map<string, CanvasSceneData | null>;
+  categories?: CanvasCategory[];
+  canvasCategoryMap?: Record<string, string>;
   isDarkMode?: boolean;
   canvasBackgroundColor?: string;
   isCollapsed?: boolean;
@@ -20,6 +22,11 @@ interface CanvasSidebarProps {
   onCreateCanvas: () => void;
   onRenameCanvas: (canvasId: string, newName: string) => void;
   onDeleteCanvas: (canvasId: string) => void;
+  onCreateCategory?: () => void;
+  onRenameCategory?: (categoryId: string, newName: string) => void;
+  onDeleteCategory?: (categoryId: string) => void;
+  onToggleCategoryCollapse?: (categoryId: string) => void;
+  onMoveCanvasToCategory?: (canvasId: string, categoryId: string | null) => void;
 }
 
 function formatRelativeTime(timestamp: number): string {
@@ -43,9 +50,12 @@ interface CanvasItemProps {
   isAgentActive: boolean;
   scene: CanvasSceneData | null;
   isDarkMode?: boolean;
+  draggable?: boolean;
   onSelect: () => void;
   onRename: (newName: string) => void;
   onDelete: () => void;
+  onRemoveFromCategory?: () => void;
+  onDragStart?: (e: React.DragEvent) => void;
 }
 
 function CanvasItem({
@@ -54,9 +64,12 @@ function CanvasItem({
   isAgentActive,
   scene,
   isDarkMode,
+  draggable,
   onSelect,
   onRename,
   onDelete,
+  onRemoveFromCategory,
+  onDragStart,
 }: CanvasItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(canvas.name);
@@ -174,6 +187,11 @@ function CanvasItem({
   return (
     <div
       style={containerStyle}
+      draggable={draggable && !isEditing}
+      onDragStart={(e) => {
+        if (isEditing) { e.preventDefault(); return; }
+        onDragStart?.(e);
+      }}
       onClick={() => !isEditing && onSelect()}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => { setIsHovered(false); setShowMenu(false); }}
@@ -233,6 +251,23 @@ function CanvasItem({
                 >
                   Rename
                 </div>
+                {onRemoveFromCategory && (
+                  <div
+                    style={menuItemStyle}
+                    onClick={() => {
+                      setShowMenu(false);
+                      onRemoveFromCategory();
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = isDarkMode ? '#4d4d4d' : '#f0f0f0';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    Ungroup
+                  </div>
+                )}
                 <div
                   style={{ ...menuItemStyle, color: '#e74c3c' }}
                   onClick={() => {
@@ -258,11 +293,318 @@ function CanvasItem({
   );
 }
 
+// ============================================================================
+// CategoryHeader Component
+// ============================================================================
+
+interface CategoryHeaderProps {
+  category: CanvasCategory;
+  canvasCount: number;
+  showAgentIcon: boolean;
+  isDarkMode?: boolean;
+  isDragOver: boolean;
+  onToggleCollapse: () => void;
+  onRename: (newName: string) => void;
+  onDelete: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+}
+
+function CategoryHeader({
+  category,
+  canvasCount,
+  showAgentIcon,
+  isDarkMode,
+  isDragOver,
+  onToggleCollapse,
+  onRename,
+  onDelete,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: CategoryHeaderProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(category.name);
+  const [showMenu, setShowMenu] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleSubmitRename = useCallback(() => {
+    const trimmed = editName.trim();
+    if (trimmed && trimmed !== category.name) {
+      onRename(trimmed);
+    }
+    setIsEditing(false);
+  }, [editName, category.name, onRename]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSubmitRename();
+    } else if (e.key === 'Escape') {
+      setEditName(category.name);
+      setIsEditing(false);
+    }
+  }, [handleSubmitRename, category.name]);
+
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '6px 4px',
+    cursor: 'pointer',
+    borderRadius: 4,
+    backgroundColor: isDragOver
+      ? (isDarkMode ? '#3a3a5c' : '#e8e7f8')
+      : 'transparent',
+    transition: 'background-color 0.15s ease',
+    userSelect: 'none',
+  };
+
+  const chevronStyle: React.CSSProperties = {
+    flexShrink: 0,
+    color: isDarkMode ? '#888' : '#666',
+  };
+
+  const nameStyle: React.CSSProperties = {
+    fontSize: 12,
+    fontWeight: 600,
+    color: isDarkMode ? '#bbb' : '#555',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  };
+
+  const countStyle: React.CSSProperties = {
+    fontSize: 10,
+    color: isDarkMode ? '#999' : '#777',
+    backgroundColor: isDarkMode ? '#3a3a3a' : '#e8e8e8',
+    borderRadius: 8,
+    padding: '0 5px',
+    lineHeight: '16px',
+    marginLeft: 4,
+    flexShrink: 0,
+  };
+
+  const menuStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: menuPos.y,
+    left: menuPos.x,
+    backgroundColor: isDarkMode ? '#3d3d3d' : '#fff',
+    border: `1px solid ${isDarkMode ? '#555' : '#ddd'}`,
+    borderRadius: 4,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+    zIndex: 10,
+    minWidth: 80,
+  };
+
+  const menuItemStyle: React.CSSProperties = {
+    padding: '6px 12px',
+    fontSize: 12,
+    cursor: 'pointer',
+    color: isDarkMode ? '#e0e0e0' : '#333',
+    whiteSpace: 'nowrap',
+  };
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1,
+    fontSize: 12,
+    padding: '1px 4px',
+    border: `1px solid ${isDarkMode ? '#555' : '#ccc'}`,
+    borderRadius: 3,
+    backgroundColor: isDarkMode ? '#1e1e1e' : '#fff',
+    color: isDarkMode ? '#e0e0e0' : '#333',
+    outline: 'none',
+    fontFamily: UI_FONT,
+    fontWeight: 600,
+  };
+
+  return (
+    <div
+      style={{ marginTop: 4, marginBottom: 2 }}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      <div
+        style={headerStyle}
+        onClick={() => !isEditing && onToggleCollapse()}
+        onContextMenu={(e) => {
+          if (isEditing) return;
+          e.preventDefault();
+          setMenuPos({ x: e.clientX, y: e.clientY });
+          setShowMenu(true);
+        }}
+      >
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', overflow: 'hidden', minWidth: 0 }}>
+          {isEditing ? (
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onBlur={handleSubmitRename}
+              onKeyDown={handleKeyDown}
+              style={inputStyle}
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <>
+              <span style={nameStyle}>{category.name}</span>
+              <span style={countStyle}>{canvasCount}</span>
+            </>
+          )}
+        </div>
+        {category.isCollapsed && showAgentIcon && (
+          <Bot size={12} color="#40c057" style={{ flexShrink: 0, marginLeft: 4 }} />
+        )}
+        <span style={chevronStyle}>
+          {category.isCollapsed
+            ? <ChevronRight size={14} />
+            : <ChevronDown size={14} />
+          }
+        </span>
+      </div>
+      {showMenu && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 9 }}
+            onClick={() => setShowMenu(false)}
+            onContextMenu={(e) => { e.preventDefault(); setShowMenu(false); }}
+          />
+          <div style={menuStyle} onClick={(e) => e.stopPropagation()}>
+            <div
+              style={menuItemStyle}
+              onClick={() => {
+                setEditName(category.name);
+                setIsEditing(true);
+                setShowMenu(false);
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = isDarkMode ? '#4d4d4d' : '#f0f0f0';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              Rename
+            </div>
+            <div
+              style={{ ...menuItemStyle, color: '#e74c3c' }}
+              onClick={() => {
+                setShowMenu(false);
+                onDelete();
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = isDarkMode ? '#4d4d4d' : '#f0f0f0';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              Delete
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// UncategorizedHeader Component (simplified, no menu)
+// ============================================================================
+
+interface UncategorizedHeaderProps {
+  canvasCount: number;
+  isCollapsed: boolean;
+  showAgentIcon: boolean;
+  isDarkMode?: boolean;
+  isDragOver: boolean;
+  onToggleCollapse: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+}
+
+function UncategorizedHeader({
+  canvasCount,
+  isCollapsed,
+  showAgentIcon,
+  isDarkMode,
+  isDragOver,
+  onToggleCollapse,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: UncategorizedHeaderProps) {
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '6px 4px',
+    cursor: 'pointer',
+    borderRadius: 4,
+    backgroundColor: isDragOver
+      ? (isDarkMode ? '#3a3a5c' : '#e8e7f8')
+      : 'transparent',
+    transition: 'background-color 0.15s ease',
+    userSelect: 'none',
+    marginTop: 4,
+    marginBottom: 2,
+  };
+
+  return (
+    <div
+      style={headerStyle}
+      onClick={onToggleCollapse}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', overflow: 'hidden', minWidth: 0 }}>
+        <span style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: isDarkMode ? '#777' : '#888',
+          fontStyle: 'italic',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          Ungrouped
+        </span>
+        <span style={{
+          fontSize: 10,
+          color: isDarkMode ? '#999' : '#777',
+          backgroundColor: isDarkMode ? '#3a3a3a' : '#e8e8e8',
+          borderRadius: 8,
+          padding: '0 5px',
+          lineHeight: '16px',
+          marginLeft: 4,
+          flexShrink: 0,
+        }}>
+          {canvasCount}
+        </span>
+      </div>
+      {isCollapsed && showAgentIcon && (
+        <Bot size={12} color="#40c057" style={{ flexShrink: 0, marginLeft: 4 }} />
+      )}
+      <span style={{ flexShrink: 0, color: isDarkMode ? '#888' : '#666' }}>
+        {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+      </span>
+    </div>
+  );
+}
+
+// ============================================================================
+// CanvasSidebar Component
+// ============================================================================
+
 export function CanvasSidebar({
   canvases,
   activeCanvasId,
   agentActiveCanvasId,
   scenes,
+  categories,
+  canvasCategoryMap,
   isDarkMode,
   canvasBackgroundColor,
   isCollapsed = false,
@@ -271,7 +613,17 @@ export function CanvasSidebar({
   onCreateCanvas,
   onRenameCanvas,
   onDeleteCanvas,
+  onCreateCategory,
+  onRenameCategory,
+  onDeleteCategory,
+  onToggleCategoryCollapse,
+  onMoveCanvasToCategory,
 }: CanvasSidebarProps) {
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null); // categoryId or '__uncategorized__'
+  const [uncategorizedCollapsed, setUncategorizedCollapsed] = useState(false);
+
+  const hasCategories = categories && categories.length > 0;
+
   // Sort canvases by name alphabetically
   const sortedCanvases = [...canvases].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -334,6 +686,53 @@ export function CanvasSidebar({
 
   const iconSize = 16;
 
+  // Drag-and-drop handlers
+  const handleCanvasDragStart = useCallback((e: React.DragEvent, canvasId: string) => {
+    e.dataTransfer.setData('text/plain', canvasId);
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  const handleCategoryDragOver = useCallback((e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverTarget(targetId);
+  }, []);
+
+  const handleCategoryDragLeave = useCallback(() => {
+    setDragOverTarget(null);
+  }, []);
+
+  const handleCategoryDrop = useCallback((e: React.DragEvent, categoryId: string | null) => {
+    e.preventDefault();
+    const canvasId = e.dataTransfer.getData('text/plain');
+    if (canvasId && onMoveCanvasToCategory) {
+      onMoveCanvasToCategory(canvasId, categoryId);
+    }
+    setDragOverTarget(null);
+  }, [onMoveCanvasToCategory]);
+
+  // Helper to render a list of canvas items
+  // categoryId: if provided, canvas is in this category and can be removed from it
+  const renderCanvasItems = (canvasList: CanvasMetadata[], categoryId?: string) =>
+    canvasList.map((canvas) => (
+      <CanvasItem
+        key={canvas.id}
+        canvas={canvas}
+        isActive={canvas.id === activeCanvasId}
+        isAgentActive={canvas.id === agentActiveCanvasId}
+        scene={scenes.get(canvas.id) || null}
+        isDarkMode={isDarkMode}
+        draggable={hasCategories}
+        onSelect={() => onSelectCanvas(canvas.id)}
+        onRename={(newName) => onRenameCanvas(canvas.id, newName)}
+        onDelete={() => onDeleteCanvas(canvas.id)}
+        onRemoveFromCategory={categoryId && onMoveCanvasToCategory
+          ? () => onMoveCanvasToCategory(canvas.id, null)
+          : undefined}
+        onDragStart={(e) => handleCanvasDragStart(e, canvas.id)}
+      />
+    ));
+
   if (isCollapsed) {
     return (
       <div
@@ -345,6 +744,81 @@ export function CanvasSidebar({
       </div>
     );
   }
+
+  // Group canvases by category
+  const renderGroupedList = () => {
+    if (!hasCategories) {
+      // No categories: flat list (same as before)
+      return renderCanvasItems(sortedCanvases);
+    }
+
+    const map = canvasCategoryMap || {};
+    const sortedCategories = [...categories].sort((a, b) => a.order - b.order);
+
+    // Build categorized groups
+    const categorizedCanvases: Record<string, CanvasMetadata[]> = {};
+    for (const cat of sortedCategories) {
+      categorizedCanvases[cat.id] = [];
+    }
+    const uncategorized: CanvasMetadata[] = [];
+
+    for (const canvas of sortedCanvases) {
+      const catId = map[canvas.id];
+      if (catId && categorizedCanvases[catId]) {
+        categorizedCanvases[catId].push(canvas);
+      } else {
+        uncategorized.push(canvas);
+      }
+    }
+
+    return (
+      <>
+        {sortedCategories.map((cat) => {
+          const catCanvases = categorizedCanvases[cat.id];
+          const hasAgentCanvas = cat.isCollapsed && agentActiveCanvasId != null &&
+            catCanvases.some(c => c.id === agentActiveCanvasId);
+
+          return (
+            <div key={cat.id}>
+              <CategoryHeader
+                category={cat}
+                canvasCount={catCanvases.length}
+                showAgentIcon={hasAgentCanvas}
+                isDarkMode={isDarkMode}
+                isDragOver={dragOverTarget === cat.id}
+                onToggleCollapse={() => onToggleCategoryCollapse?.(cat.id)}
+                onRename={(newName) => onRenameCategory?.(cat.id, newName)}
+                onDelete={() => onDeleteCategory?.(cat.id)}
+                onDragOver={(e) => handleCategoryDragOver(e, cat.id)}
+                onDragLeave={handleCategoryDragLeave}
+                onDrop={(e) => handleCategoryDrop(e, cat.id)}
+              />
+              {!cat.isCollapsed && renderCanvasItems(catCanvases, cat.id)}
+            </div>
+          );
+        })}
+
+        {/* Uncategorized section */}
+        {uncategorized.length > 0 && (
+          <div>
+            <UncategorizedHeader
+              canvasCount={uncategorized.length}
+              isCollapsed={uncategorizedCollapsed}
+              showAgentIcon={uncategorizedCollapsed && agentActiveCanvasId != null &&
+                uncategorized.some(c => c.id === agentActiveCanvasId)}
+              isDarkMode={isDarkMode}
+              isDragOver={dragOverTarget === '__uncategorized__'}
+              onToggleCollapse={() => setUncategorizedCollapsed(prev => !prev)}
+              onDragOver={(e) => handleCategoryDragOver(e, '__uncategorized__')}
+              onDragLeave={handleCategoryDragLeave}
+              onDrop={(e) => handleCategoryDrop(e, null)}
+            />
+            {!uncategorizedCollapsed && renderCanvasItems(uncategorized)}
+          </div>
+        )}
+      </>
+    );
+  };
 
   return (
     <div style={sidebarStyle}>
@@ -358,6 +832,15 @@ export function CanvasSidebar({
           >
             <Plus size={iconSize} />
           </button>
+          {onCreateCategory && (
+            <button
+              style={buttonStyle}
+              onClick={onCreateCategory}
+              title="New group"
+            >
+              <FolderPlus size={iconSize} />
+            </button>
+          )}
           <button
             style={buttonStyle}
             onClick={onToggleCollapsed}
@@ -369,19 +852,7 @@ export function CanvasSidebar({
       </div>
 
       <div style={listStyle}>
-        {sortedCanvases.map((canvas) => (
-          <CanvasItem
-            key={canvas.id}
-            canvas={canvas}
-            isActive={canvas.id === activeCanvasId}
-            isAgentActive={canvas.id === agentActiveCanvasId}
-            scene={scenes.get(canvas.id) || null}
-            isDarkMode={isDarkMode}
-            onSelect={() => onSelectCanvas(canvas.id)}
-            onRename={(newName) => onRenameCanvas(canvas.id, newName)}
-            onDelete={() => onDeleteCanvas(canvas.id)}
-          />
-        ))}
+        {renderGroupedList()}
       </div>
     </div>
   );

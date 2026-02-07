@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.9.3"
+  version: "0.10.0"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -23,16 +23,16 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.9.3
+  bun add -g @agent-canvas/cli@0.10.0
   # or
-  npm install -g @agent-canvas/cli@0.9.3
+  npm install -g @agent-canvas/cli@0.10.0
   ```
 
-- **If installed but version differs from 0.9.3**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.9.3`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.9.3`
+- **If installed but version differs from 0.10.0**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.10.0`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.10.0`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.9.3
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.10.0
 
 ## Quick Start
 

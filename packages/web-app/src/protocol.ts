@@ -11,9 +11,18 @@ export interface CanvasMetadata {
   updatedAt: number;
 }
 
+export interface CanvasCategory {
+  id: string;
+  name: string;
+  isCollapsed: boolean;
+  order: number;
+}
+
 export interface CanvasListState {
   activeCanvasId: string;
   canvases: CanvasMetadata[];
+  categories?: CanvasCategory[];
+  canvasCategoryMap?: Record<string, string>; // canvasId -> categoryId
 }
 
 // ============================================================================

@@ -7,7 +7,7 @@ export default defineConfig({
     'process.env': {},
   },
   server: {
-    port: 7891,
+    port: parseInt(process.env.VITE_DEV_PORT || '7891', 10),
   },
   build: {
     outDir: 'dist',

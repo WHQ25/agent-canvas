@@ -1,5 +1,5 @@
 import { createStore, get, set, del, keys } from 'idb-keyval';
-import type { CanvasMetadata, CanvasListState } from '../protocol';
+import type { CanvasMetadata, CanvasListState, CanvasCategory } from '../protocol';
 
 const CANVAS_LIST_KEY = 'agent-canvas-list';
 const DEFAULT_CANVAS_NAME = 'Default';
@@ -276,7 +276,7 @@ export function validateCreateCanvas(state: CanvasListState, name: string): Crea
  */
 export function addCanvasToState(state: CanvasListState, newCanvas: CanvasMetadata): CanvasListState {
   return {
-    activeCanvasId: state.activeCanvasId,
+    ...state,
     canvases: [...state.canvases, newCanvas],
   };
 }
@@ -360,4 +360,102 @@ export function generateUniqueCanvasName(state: CanvasListState, baseName: strin
     name = `${baseName} ${counter++}`;
   }
   return name;
+}
+
+// ============================================================================
+// Category Management Pure Functions
+// ============================================================================
+
+/**
+ * Create a new category
+ */
+export function createCategory(state: CanvasListState, name: string): CanvasListState {
+  const categories = state.categories || [];
+  const maxOrder = categories.reduce((max, c) => Math.max(max, c.order), 0);
+  const newCategory: CanvasCategory = {
+    id: generateId(),
+    name,
+    isCollapsed: false,
+    order: maxOrder + 1,
+  };
+  return {
+    ...state,
+    categories: [...categories, newCategory],
+  };
+}
+
+/**
+ * Rename a category
+ */
+export function renameCategory(state: CanvasListState, categoryId: string, newName: string): CanvasListState {
+  const categories = state.categories || [];
+  return {
+    ...state,
+    categories: categories.map(c =>
+      c.id === categoryId ? { ...c, name: newName } : c
+    ),
+  };
+}
+
+/**
+ * Delete a category (canvases in it become uncategorized)
+ */
+export function deleteCategory(state: CanvasListState, categoryId: string): CanvasListState {
+  const categories = (state.categories || []).filter(c => c.id !== categoryId);
+  const canvasCategoryMap = { ...(state.canvasCategoryMap || {}) };
+  // Remove mappings that point to deleted category
+  for (const [canvasId, catId] of Object.entries(canvasCategoryMap)) {
+    if (catId === categoryId) {
+      delete canvasCategoryMap[canvasId];
+    }
+  }
+  return {
+    ...state,
+    categories: categories.length > 0 ? categories : undefined,
+    canvasCategoryMap: Object.keys(canvasCategoryMap).length > 0 ? canvasCategoryMap : undefined,
+  };
+}
+
+/**
+ * Toggle category collapse state
+ */
+export function toggleCategoryCollapse(state: CanvasListState, categoryId: string): CanvasListState {
+  const categories = state.categories || [];
+  return {
+    ...state,
+    categories: categories.map(c =>
+      c.id === categoryId ? { ...c, isCollapsed: !c.isCollapsed } : c
+    ),
+  };
+}
+
+/**
+ * Move a canvas to a category (or uncategorized if categoryId is null)
+ */
+export function moveCanvasToCategory(state: CanvasListState, canvasId: string, categoryId: string | null): CanvasListState {
+  const canvasCategoryMap = { ...(state.canvasCategoryMap || {}) };
+  if (categoryId === null) {
+    delete canvasCategoryMap[canvasId];
+  } else {
+    canvasCategoryMap[canvasId] = categoryId;
+  }
+  return {
+    ...state,
+    canvasCategoryMap: Object.keys(canvasCategoryMap).length > 0 ? canvasCategoryMap : undefined,
+  };
+}
+
+/**
+ * Remove a canvas from the category map (used when deleting a canvas)
+ */
+export function removeCanvasFromCategoryMap(state: CanvasListState, canvasId: string): CanvasListState {
+  if (!state.canvasCategoryMap || !(canvasId in state.canvasCategoryMap)) {
+    return state;
+  }
+  const canvasCategoryMap = { ...state.canvasCategoryMap };
+  delete canvasCategoryMap[canvasId];
+  return {
+    ...state,
+    canvasCategoryMap: Object.keys(canvasCategoryMap).length > 0 ? canvasCategoryMap : undefined,
+  };
 }

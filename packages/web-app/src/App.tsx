@@ -61,13 +61,19 @@ import {
   validateRenameCanvas,
   renameCanvasInState,
   generateUniqueCanvasName,
+  createCategory,
+  renameCategory,
+  deleteCategory,
+  toggleCategoryCollapse,
+  moveCanvasToCategory,
+  removeCanvasFromCategoryMap,
   type CanvasSceneData,
 } from './lib/canvas-storage';
 import { collectUsedFiles } from './lib/file-utils';
 
 import { CanvasSidebar } from './components/CanvasSidebar';
 
-const WS_PORT = 7890;
+const WS_PORT = import.meta.env.VITE_WS_PORT ? parseInt(import.meta.env.VITE_WS_PORT, 10) : 7890;
 
 interface BoundElementRef {
   id: string;
@@ -465,13 +471,12 @@ export default function App() {
       return next;
     });
 
-    // Then update active canvas
-    const updatedState: CanvasListState = {
-      ...state,
-      activeCanvasId: canvasId,
-    };
-    setCanvasListState(updatedState);
-    saveCanvasList(updatedState);
+    // Then update active canvas (preserves categories via spread)
+    setCanvasListState(prev => {
+      const updated = { ...prev, activeCanvasId: canvasId };
+      saveCanvasList(updated);
+      return updated;
+    });
   }, [saveCurrentScene]);
 
   // UI handler: Create canvas from sidebar
@@ -490,8 +495,9 @@ export default function App() {
     const currentAppState = api?.getAppState() as { theme?: string } | undefined;
     const preservedAppState = { theme: currentAppState?.theme, name: newCanvas.name };
 
-    // Update canvas list
+    // Update canvas list (preserve categories)
     const updatedState: CanvasListState = {
+      ...state,
       activeCanvasId: newCanvas.id,
       canvases: [...state.canvases, newCanvas],
     };
@@ -591,13 +597,16 @@ export default function App() {
       }
     }
 
-    // Build updated canvas list
+    // Build updated canvas list, preserving categories and cleaning up category map
     const remainingCanvases = state.canvases.filter(c => c.id !== canvasId);
     const updatedCanvases = isLastCanvas ? [nextCanvas] : remainingCanvases;
-    const updatedState: CanvasListState = {
+    let updatedState: CanvasListState = {
+      ...state,
       activeCanvasId: canvasId === state.activeCanvasId ? nextCanvas.id : state.activeCanvasId,
       canvases: updatedCanvases,
     };
+    // Clean up category mapping for deleted canvas
+    updatedState = removeCanvasFromCategoryMap(updatedState, canvasId);
     setCanvasListState(updatedState);
     saveCanvasList(updatedState);
 
@@ -607,6 +616,47 @@ export default function App() {
       const next = new Map(prev);
       next.delete(canvasId);
       return next;
+    });
+  }, []);
+
+  // Category handlers
+  const handleCreateCategoryUI = useCallback(() => {
+    setCanvasListState(prev => {
+      const updated = createCategory(prev, 'New Category');
+      saveCanvasList(updated);
+      return updated;
+    });
+  }, []);
+
+  const handleRenameCategoryUI = useCallback((categoryId: string, newName: string) => {
+    setCanvasListState(prev => {
+      const updated = renameCategory(prev, categoryId, newName);
+      saveCanvasList(updated);
+      return updated;
+    });
+  }, []);
+
+  const handleDeleteCategoryUI = useCallback((categoryId: string) => {
+    setCanvasListState(prev => {
+      const updated = deleteCategory(prev, categoryId);
+      saveCanvasList(updated);
+      return updated;
+    });
+  }, []);
+
+  const handleToggleCategoryCollapseUI = useCallback((categoryId: string) => {
+    setCanvasListState(prev => {
+      const updated = toggleCategoryCollapse(prev, categoryId);
+      saveCanvasList(updated);
+      return updated;
+    });
+  }, []);
+
+  const handleMoveCanvasToCategoryUI = useCallback((canvasId: string, categoryId: string | null) => {
+    setCanvasListState(prev => {
+      const updated = moveCanvasToCategory(prev, canvasId, categoryId);
+      saveCanvasList(updated);
+      return updated;
     });
   }, []);
 
@@ -922,6 +972,8 @@ export default function App() {
         activeCanvasId={canvasListState.activeCanvasId}
         agentActiveCanvasId={agentActiveCanvasId}
         scenes={sceneCache}
+        categories={canvasListState.categories}
+        canvasCategoryMap={canvasListState.canvasCategoryMap}
         isDarkMode={isDarkMode}
         canvasBackgroundColor={canvasBackgroundColor}
         isCollapsed={sidebarCollapsed}
@@ -930,6 +982,11 @@ export default function App() {
         onCreateCanvas={handleCreateCanvasUI}
         onRenameCanvas={handleRenameCanvasUI}
         onDeleteCanvas={handleDeleteCanvasUI}
+        onCreateCategory={handleCreateCategoryUI}
+        onRenameCategory={handleRenameCategoryUI}
+        onDeleteCategory={handleDeleteCategoryUI}
+        onToggleCategoryCollapse={handleToggleCategoryCollapseUI}
+        onMoveCanvasToCategory={handleMoveCanvasToCategoryUI}
       />
       <div style={{ flex: 1, height: '100%', position: 'relative' }}>
         <Excalidraw

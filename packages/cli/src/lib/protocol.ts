@@ -1,4 +1,4 @@
-export const WS_PORT = 7890;
+export const WS_PORT = parseInt(process.env.AGENT_CANVAS_WS_PORT || '7890', 10);
 
 // ============================================================================
 // Canvas Metadata
@@ -11,9 +11,18 @@ export interface CanvasMetadata {
   updatedAt: number;
 }
 
+export interface CanvasCategory {
+  id: string;
+  name: string;
+  isCollapsed: boolean;
+  order: number;
+}
+
 export interface CanvasListState {
   activeCanvasId: string;
   canvases: CanvasMetadata[];
+  categories?: CanvasCategory[];
+  canvasCategoryMap?: Record<string, string>; // canvasId -> categoryId
 }
 
 // ============================================================================

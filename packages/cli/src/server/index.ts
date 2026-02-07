@@ -8,7 +8,7 @@ import { WS_PORT } from '../lib/protocol.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const HTTP_PORT = 7891;
+const HTTP_PORT = parseInt(process.env.AGENT_CANVAS_HTTP_PORT || '7891', 10);
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html',
@@ -27,6 +27,10 @@ const MIME_TYPES: Record<string, string> = {
 // Track connections
 let browserClient: WebSocket | null = null;
 const pendingRequests = new Map<string, WebSocket>();
+
+// Auto-shutdown after idle timeout (default: 2 hours)
+const IDLE_TIMEOUT_MS = parseInt(process.env.AGENT_CANVAS_IDLE_TIMEOUT || String(2 * 60 * 60 * 1000), 10);
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
 function getStaticDir(): string {
   // Try to find static files
@@ -90,10 +94,31 @@ export function startServer(): Promise<{ httpUrl: string; wsPort: number; close:
     // WebSocket Server
     const wss = new WebSocketServer({ port: WS_PORT });
 
+    const closeServer = () => {
+      wss.close();
+      httpServer.close();
+    };
+
+    // Idle auto-shutdown
+    function resetIdleTimer() {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        console.log(`\nNo activity for ${IDLE_TIMEOUT_MS / 1000 / 60} minutes. Shutting down...`);
+        closeServer();
+        process.exit(0);
+      }, IDLE_TIMEOUT_MS);
+    }
+    resetIdleTimer();
+
     wss.on('connection', (ws) => {
       ws.on('message', async (data) => {
         try {
           const message = JSON.parse(data.toString());
+
+          // Reset idle timer on real activity (skip health checks)
+          if (message.type !== 'ping' && message.type !== 'isBrowserConnected') {
+            resetIdleTimer();
+          }
 
           // Browser identification
           if (message.type === 'browserConnect') {
@@ -161,10 +186,7 @@ export function startServer(): Promise<{ httpUrl: string; wsPort: number; close:
       resolve({
         httpUrl,
         wsPort: WS_PORT,
-        close: () => {
-          wss.close();
-          httpServer.close();
-        },
+        close: closeServer,
       });
     });
   });
