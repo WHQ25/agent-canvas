@@ -27,13 +27,14 @@ const program = new Command();
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.10.0');
+  .version('0.11.0');
 
 program
   .command('start')
   .description('Start the canvas server and open in browser')
-  .action(async () => {
-    await start();
+  .option('--dev', 'Development mode: use Vite dev server with HMR')
+  .action(async (options) => {
+    await start({ dev: options.dev });
   });
 
 program
@@ -63,6 +64,7 @@ program
   .option('--label-font-size <number>', 'Label font size', parseFloat)
   .option('--label-stroke-color <color>', 'Label text color (hex, defaults to --stroke-color)')
   .option('-n, --note <text>', 'Note for this element (stored in customData)')
+  .option('--animated', 'Zoom to element after adding')
   .action(async (options) => {
     await addShape({
       type: options.type,
@@ -79,6 +81,7 @@ program
       labelFontSize: options.labelFontSize,
       labelStrokeColor: options.labelStrokeColor,
       note: options.note,
+      animated: options.animated,
     }, addShapeDeps);
   });
 
@@ -96,6 +99,7 @@ program
   .option('-a, --anchor <anchor>', 'Anchor point: topLeft, topCenter, topRight, leftCenter, center, rightCenter, bottomLeft, bottomCenter, bottomRight')
   .option('--stroke-color <color>', 'Text color (hex)')
   .option('-n, --note <text>', 'Note for this element (stored in customData)')
+  .option('--animated', 'Zoom to element after adding')
   .action(async (options) => {
     await addText({
       text: options.text,
@@ -106,6 +110,7 @@ program
       anchor: options.anchor,
       strokeColor: options.strokeColor,
       note: options.note,
+      animated: options.animated,
     }, addTextDeps);
   });
 
@@ -123,6 +128,7 @@ program
   .option('--stroke-width <number>', 'Line width in pixels', parseFloat)
   .option('--stroke-style <style>', 'Line style: solid, dashed, or dotted')
   .option('-n, --note <text>', 'Note for this element (stored in customData)')
+  .option('--animated', 'Zoom to element after adding')
   .action(async (options) => {
     await addLine({
       x: options.x,
@@ -133,6 +139,7 @@ program
       strokeWidth: options.strokeWidth,
       strokeStyle: options.strokeStyle,
       note: options.note,
+      animated: options.animated,
     }, addLineDeps);
   });
 
@@ -154,6 +161,7 @@ program
   .option('--arrow-type <type>', 'Arrow type: sharp (straight), round (curved), elbow (90° angles)')
   .option('--via <points>', 'Intermediate points as "x1,y1;x2,y2;..." (absolute coordinates). For round: 1 control point. For elbow: multiple turn points.')
   .option('-n, --note <text>', 'Note for this element (stored in customData)')
+  .option('--animated', 'Zoom to element after adding')
   .action(async (options) => {
     await addArrow({
       x: options.x,
@@ -168,6 +176,7 @@ program
       arrowType: options.arrowType,
       via: options.via,
       note: options.note,
+      animated: options.animated,
     }, addArrowDeps);
   });
 
@@ -184,6 +193,7 @@ program
   .option('--stroke-style <style>', 'Stroke style: solid, dashed, or dotted')
   .option('--fill-style <style>', 'Fill style: hachure, cross-hatch, solid, or zigzag')
   .option('-n, --note <text>', 'Note for this element (stored in customData)')
+  .option('--animated', 'Zoom to element after adding')
   .action(async (options) => {
     await addPolygon({
       points: options.points,
@@ -193,6 +203,7 @@ program
       strokeStyle: options.strokeStyle,
       fillStyle: options.fillStyle,
       note: options.note,
+      animated: options.animated,
     }, addPolygonDeps);
   });
 

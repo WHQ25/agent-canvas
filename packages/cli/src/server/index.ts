@@ -52,51 +52,57 @@ function getStaticDir(): string {
   throw new Error('Static files not found. Please run "bun run build" first.');
 }
 
-export function startServer(): Promise<{ httpUrl: string; wsPort: number; close: () => void }> {
+export function startServer(options?: { wsOnly?: boolean }): Promise<{ httpUrl: string; wsPort: number; close: () => void }> {
   return new Promise((resolve) => {
-    const staticDir = getStaticDir();
-    console.log(`Serving static files from: ${staticDir}`);
+    const wsOnly = options?.wsOnly ?? false;
 
-    // HTTP Server for static files
-    const httpServer = createServer((req, res) => {
-      let filePath = req.url || '/';
+    let httpServer: ReturnType<typeof createServer> | null = null;
 
-      // Remove query string
-      filePath = filePath.split('?')[0];
+    if (!wsOnly) {
+      const staticDir = getStaticDir();
+      console.log(`Serving static files from: ${staticDir}`);
 
-      // Default to index.html
-      if (filePath === '/') {
-        filePath = '/index.html';
-      }
+      // HTTP Server for static files
+      httpServer = createServer((req, res) => {
+        let filePath = req.url || '/';
 
-      const fullPath = join(staticDir, filePath);
+        // Remove query string
+        filePath = filePath.split('?')[0];
 
-      if (existsSync(fullPath)) {
-        const ext = extname(fullPath);
-        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-        const content = readFileSync(fullPath);
-        res.writeHead(200, { 'Content-Type': contentType });
-        res.end(content);
-      } else {
-        // For SPA, fallback to index.html for non-asset paths
-        const indexPath = join(staticDir, 'index.html');
-        if (existsSync(indexPath) && !filePath.includes('.')) {
-          const content = readFileSync(indexPath);
-          res.writeHead(200, { 'Content-Type': 'text/html' });
+        // Default to index.html
+        if (filePath === '/') {
+          filePath = '/index.html';
+        }
+
+        const fullPath = join(staticDir, filePath);
+
+        if (existsSync(fullPath)) {
+          const ext = extname(fullPath);
+          const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+          const content = readFileSync(fullPath);
+          res.writeHead(200, { 'Content-Type': contentType });
           res.end(content);
         } else {
-          res.writeHead(404);
-          res.end('Not Found');
+          // For SPA, fallback to index.html for non-asset paths
+          const indexPath = join(staticDir, 'index.html');
+          if (existsSync(indexPath) && !filePath.includes('.')) {
+            const content = readFileSync(indexPath);
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(content);
+          } else {
+            res.writeHead(404);
+            res.end('Not Found');
+          }
         }
-      }
-    });
+      });
+    }
 
     // WebSocket Server
     const wss = new WebSocketServer({ port: WS_PORT });
 
     const closeServer = () => {
       wss.close();
-      httpServer.close();
+      httpServer?.close();
     };
 
     // Idle auto-shutdown
@@ -177,18 +183,27 @@ export function startServer(): Promise<{ httpUrl: string; wsPort: number; close:
       });
     });
 
-    httpServer.listen(HTTP_PORT, () => {
-      const httpUrl = `http://localhost:${HTTP_PORT}`;
-      console.log(`Canvas server running:`);
-      console.log(`  - Web UI: ${httpUrl}`);
-      console.log(`  - WebSocket: ws://localhost:${WS_PORT}`);
-
+    if (wsOnly) {
+      console.log(`WebSocket server running on ws://localhost:${WS_PORT}`);
       resolve({
-        httpUrl,
+        httpUrl: '',
         wsPort: WS_PORT,
         close: closeServer,
       });
-    });
+    } else {
+      httpServer!.listen(HTTP_PORT, () => {
+        const httpUrl = `http://localhost:${HTTP_PORT}`;
+        console.log(`Canvas server running:`);
+        console.log(`  - Web UI: ${httpUrl}`);
+        console.log(`  - WebSocket: ws://localhost:${WS_PORT}`);
+
+        resolve({
+          httpUrl,
+          wsPort: WS_PORT,
+          close: closeServer,
+        });
+      });
+    }
   });
 }
 

@@ -5,7 +5,7 @@ An AI agent skill for drawing diagrams, flowcharts, and visualizations on Excali
 
 ## Features
 
-🔌 **Works with any AI agent** — Claude Code, Codex, Cursor, or any agent that supports skills.
+🔌 **Works with any AI agent** — Claude Code, Codex, Cursor, or any agent that supports skills and bash.
 
 🧠 **Context-aware** — Unlike web-based drawing tools, your agent sees your entire codebase. Ask it to "draw the architecture of this project" and it will analyze your code structure to generate accurate diagrams.
 
@@ -17,7 +17,7 @@ An AI agent skill for drawing diagrams, flowcharts, and visualizations on Excali
 agent-canvas add-shape -t rectangle -x 100 -y 100 -l "Hello"
 ```
 
-🔄 **Real-time & iterative** — See changes instantly in browser. Refine diagrams through natural conversation: *"make the boxes blue"*, *"add a database layer"*.
+🔄 **Real-time & iterative** — See changes instantly in browser. Use `--animated` to auto-zoom to each new element and watch the diagram being built step by step. Refine through natural conversation: *"make the boxes blue"*, *"add a database layer"*.
 
 👀 **Bidirectional** — Agent can export and view the canvas anytime. Make manual edits in Excalidraw, then ask the agent to continue — no screenshots needed.
 
@@ -125,21 +125,15 @@ The skill is located in `skills/agent-canvas/`:
 # Install dependencies
 bun install
 
-# Build all packages
-bun run build
-
-# Run in dev mode (starts both web-app and CLI server)
+# Start dev server (Vite HMR + WS relay, no build needed)
 bun run dev
 
 # Run CLI commands during development
 bun dev:cli <command>
-# Example: bun dev:cli start
 # Example: bun dev:cli add-shape -t rectangle -x 100 -y 100
 
-# Or link a development version alongside production
-cd packages/cli
-bun run link:dev      # Creates global `agent-canvas-dev` command
-bun run unlink:dev    # Removes the link
+# Build all packages
+bun run build
 ```
 
-Using `agent-canvas-dev` lets you test local changes while keeping the production `agent-canvas` intact.
+`bun run dev` starts a Vite dev server with hot module replacement — web-app changes auto-reload in the browser without rebuilding.

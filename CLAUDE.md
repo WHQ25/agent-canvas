@@ -25,54 +25,40 @@ Agent Canvas is an AI agent skill + CLI tool that provides an Excalidraw canvas 
 # Install dependencies (from root)
 bun install
 
-# Run all packages in dev mode
+# Start dev server (Vite HMR + WS relay, auto-opens browser)
 bun run dev
 
-# Run specific package
-bun run dev --filter=@agent-canvas/cli
-bun run dev --filter=@agent-canvas/web-app
+# Run CLI commands during development (use this instead of global `agent-canvas`)
+bun dev:cli <command>
+# Example: bun dev:cli add-shape -t rectangle -x 100 -y 100
 
 # Build all packages
 bun run build
 
 # Type check
 bun run typecheck
-
-# Run CLI commands during development (use this instead of global `agent-canvas`)
-bun dev:cli <command>
-# Example: bun dev:cli start
-# Example: bun dev:cli add-shape -t rectangle -x 100 -y 100
 ```
 
-**Important**: When developing, always use `bun dev:cli` or `agent-canvas-dev` instead of the globally installed `agent-canvas` command. The global version is the published release and won't include your local changes.
+**Important**: When developing, always use `bun dev:cli` instead of the globally installed `agent-canvas` command. The global version is the published release and won't include your local changes.
 
-## Development Version (agent-canvas-dev)
+### Dev Mode (`start --dev`)
 
-For convenient development, you can link a `agent-canvas-dev` command that points to your local development version, while keeping the production `agent-canvas` intact.
+`bun run dev` (or `bun dev:cli start --dev`) starts a development server with Vite HMR:
 
-```bash
-# Link development version (from packages/cli directory)
-cd packages/cli
-bun run link:dev    # Creates agent-canvas-dev symlink
+- WS relay on port **7900** (dev default, overridable via `AGENT_CANVAS_WS_PORT`)
+- Vite dev server on port **5173** (Vite default) with hot module replacement
+- No `bun run build` needed — web-app changes auto-reload in browser
 
-# Now you can use:
-agent-canvas-dev start           # Uses local development code
-agent-canvas      start           # Uses globally installed production version
-
-# Unlink when done
-bun run unlink:dev
-```
-
-**Benefits:**
-- Test local changes without affecting production CLI
-- No need to reinstall global package after each change
-- Both versions can coexist
+| | WS Port | HTTP Port |
+|---|---|---|
+| Production (`start`) | 7890 | 7891 |
+| Dev (`start --dev`) | 7900 | 5173 (Vite) |
 
 **Workflow:**
-1. Make code changes in `packages/web-app/src/` or `packages/cli/src/`
-2. Run `bun run build` to rebuild
-3. Restart `agent-canvas-dev start` and refresh browser
-4. Test your changes
+1. Run `bun run dev` to start dev server (Vite HMR + WS relay)
+2. Make code changes in `packages/web-app/src/` — browser auto-reloads
+3. For CLI changes in `packages/cli/src/`, restart the dev server
+4. Test CLI commands with `bun dev:cli <command>`
 
 ## Architecture
 
@@ -94,6 +80,7 @@ Messages are defined in `cli/src/lib/protocol.ts` and follow a typed message pat
 
 ### Application Control
 - `agent-canvas start` - Start server and open browser
+- `agent-canvas start --dev` - Dev mode: Vite HMR + WS relay (no build needed)
 - `agent-canvas load <path>` - Load .excalidraw file into current canvas
 
 ### Canvas Management

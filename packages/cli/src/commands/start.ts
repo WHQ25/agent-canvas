@@ -1,8 +1,12 @@
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
+import { existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { startServer, isBrowserServerRunning, isBrowserConnected } from '../server/index.js';
 
 const execAsync = promisify(exec);
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 async function openBrowser(url: string): Promise<void> {
   const platform = process.platform;
@@ -19,7 +23,76 @@ async function openBrowser(url: string): Promise<void> {
   }
 }
 
-export async function start(): Promise<void> {
+function findWebAppDir(): string {
+  const possiblePaths = [
+    join(__dirname, '../../../web-app'),
+    join(__dirname, '../../../../packages/web-app'),
+  ];
+  for (const p of possiblePaths) {
+    if (existsSync(join(p, 'package.json'))) {
+      return p;
+    }
+  }
+  throw new Error('web-app package not found. --dev mode must be run from the source repository.');
+}
+
+export async function start(options?: { dev?: boolean }): Promise<void> {
+  if (options?.dev) {
+    // Set dev port defaults
+    if (!process.env.AGENT_CANVAS_WS_PORT) {
+      process.env.AGENT_CANVAS_WS_PORT = '7900';
+    }
+
+    // Start WS-only server
+    console.log('Starting dev mode...');
+    await startServer({ wsOnly: true });
+
+    // Start Vite dev server
+    const webAppDir = findWebAppDir();
+    const viteProcess = spawn('npx', ['vite', '--host'], {
+      cwd: webAppDir,
+      env: { ...process.env, VITE_WS_PORT: process.env.AGENT_CANVAS_WS_PORT },
+      stdio: 'pipe',
+    });
+
+    // Parse Vite output to get URL, then open browser
+    let opened = false;
+    viteProcess.stdout?.on('data', (data: Buffer) => {
+      const output = data.toString();
+      process.stdout.write(output);
+
+      if (!opened) {
+        // Vite prints "Local: http://localhost:5173/" — extract the URL
+        const match = output.match(/Local:\s+(https?:\/\/\S+)/);
+        if (match) {
+          opened = true;
+          openBrowser(match[1]);
+        }
+      }
+    });
+
+    viteProcess.stderr?.on('data', (data: Buffer) => {
+      process.stderr.write(data);
+    });
+
+    viteProcess.on('close', (code) => {
+      console.log(`Vite dev server exited with code ${code}`);
+      process.exit(code ?? 0);
+    });
+
+    // Cleanup: kill Vite on Ctrl+C
+    const cleanup = () => {
+      viteProcess.kill();
+      process.exit(0);
+    };
+    process.on('SIGINT', cleanup);
+    process.on('SIGTERM', cleanup);
+
+    console.log('\nDev mode is ready. Press Ctrl+C to stop.');
+    await new Promise(() => {}); // Block forever
+    return;
+  }
+
   const running = await isBrowserServerRunning();
 
   if (!running) {

@@ -1,6 +1,6 @@
 {
   "name": "@agent-canvas/cli",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "CLI tool for Agent Canvas - Excalidraw interface for AI agents",
   "license": "MIT",
   "repository": {
@@ -30,9 +30,7 @@
     "build": "tsc && mkdir -p ./dist/static && cp -r ../web-app/dist/* ./dist/static/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "link:dev": "bash -c 'ln -sf \"$(pwd)/bin/agent-canvas.js\" \"$(dirname $(which agent-canvas))/agent-canvas-dev\" && echo \"Linked: agent-canvas-dev -> $(pwd)/bin/agent-canvas.js\"'",
-    "unlink:dev": "bash -c 'rm -f \"$(dirname $(which agent-canvas))/agent-canvas-dev\" && echo \"Unlinked agent-canvas-dev\"'"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@toon-format/toon": "^2.1.0",

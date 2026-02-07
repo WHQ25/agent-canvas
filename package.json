@@ -5,8 +5,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "VITE_WS_PORT=7900 VITE_DEV_PORT=7901 turbo run dev",
-    "dev:cli": "AGENT_CANVAS_WS_PORT=7900 AGENT_CANVAS_HTTP_PORT=7901 bun run --cwd packages/cli src/index.ts",
+    "dev": "bun dev:cli start --dev",
+    "dev:cli": "AGENT_CANVAS_WS_PORT=7900 bun run --cwd packages/cli src/index.ts",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
