@@ -10,6 +10,7 @@ export interface AddTextOptions {
   anchor?: TextAnchor;
   strokeColor?: string;
   note?: string;
+  animated?: boolean;
 }
 
 // Minimal client interface for dependency injection (only methods we need)
@@ -47,6 +48,7 @@ export async function addText(options: AddTextOptions, deps: AddTextDeps = defau
     anchor: options.anchor,
     strokeColor: options.strokeColor,
     customData: options.note ? { note: options.note } : undefined,
+    animated: options.animated,
   };
 
   const result = await client.send<AddTextResponse>({

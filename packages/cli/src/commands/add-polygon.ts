@@ -9,6 +9,7 @@ export interface AddPolygonOptions {
   strokeStyle?: 'solid' | 'dashed' | 'dotted';
   fillStyle?: 'hachure' | 'cross-hatch' | 'solid' | 'zigzag';
   note?: string;
+  animated?: boolean;
 }
 
 // Minimal client interface for dependency injection (only methods we need)
@@ -55,6 +56,7 @@ export async function addPolygon(options: AddPolygonOptions, deps: AddPolygonDep
     strokeStyle: options.strokeStyle,
     fillStyle: options.fillStyle,
     customData: options.note ? { note: options.note } : undefined,
+    animated: options.animated,
   };
 
   const result = await client.send<AddPolygonResponse>({

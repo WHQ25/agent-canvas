@@ -121,6 +121,7 @@ interface ExcalidrawAPI {
     captureUpdate?: 'IMMEDIATELY' | 'EVENTUALLY' | 'NEVER';
   }) => void;
   addFiles: (files: BinaryFileData[]) => void;
+  scrollToContent: (target?: unknown, opts?: { fitToViewport?: boolean; viewportZoomFactor?: number; animate?: boolean; duration?: number; maxZoom?: number }) => void;
 }
 
 // AppState keys to save (matching Excalidraw's browser: true config)
@@ -785,52 +786,127 @@ export default function App() {
 
   // Process incoming commands
   const processCommand = useCallback(async (command: { type: string; id: string; params?: unknown }) => {
+    let result;
     switch (command.type) {
       case 'listCanvases':
-        return handleListCanvases(command.id);
+        result = handleListCanvases(command.id); break;
       case 'createCanvas':
-        return await handleCreateCanvas(command.id, command.params as CreateCanvasParams);
+        result = await handleCreateCanvas(command.id, command.params as CreateCanvasParams); break;
       case 'switchCanvas':
-        return await handleSwitchCanvas(command.id, command.params as SwitchCanvasParams);
+        result = await handleSwitchCanvas(command.id, command.params as SwitchCanvasParams); break;
       case 'renameCanvas':
-        return handleRenameCanvas(command.id, command.params as RenameCanvasParams);
+        result = handleRenameCanvas(command.id, command.params as RenameCanvasParams); break;
       case 'addShape':
-        return await handleAddShape(command.id, command.params as AddShapeParams);
+        result = await handleAddShape(command.id, command.params as AddShapeParams); break;
       case 'addText':
-        return await handleAddText(command.id, command.params as AddTextParams);
+        result = await handleAddText(command.id, command.params as AddTextParams); break;
       case 'addLine':
-        return await handleAddLine(command.id, command.params as AddLineParams);
+        result = await handleAddLine(command.id, command.params as AddLineParams); break;
       case 'addArrow':
-        return await handleAddArrow(command.id, command.params as AddArrowParams);
+        result = await handleAddArrow(command.id, command.params as AddArrowParams); break;
       case 'addPolygon':
-        return await handleAddPolygon(command.id, command.params as AddPolygonParams);
+        result = await handleAddPolygon(command.id, command.params as AddPolygonParams); break;
       case 'addImage':
-        return await handleAddImage(command.id, command.params as AddImageParams);
+        result = await handleAddImage(command.id, command.params as AddImageParams); break;
       case 'deleteElements':
-        return await handleDeleteElements(command.id, command.params as DeleteElementsParams);
+        result = await handleDeleteElements(command.id, command.params as DeleteElementsParams); break;
       case 'rotateElements':
-        return await handleRotateElements(command.id, command.params as RotateElementsParams);
+        result = await handleRotateElements(command.id, command.params as RotateElementsParams); break;
       case 'groupElements':
-        return await handleGroupElements(command.id, command.params as GroupElementsParams);
+        result = await handleGroupElements(command.id, command.params as GroupElementsParams); break;
       case 'ungroupElement':
-        return await handleUngroupElement(command.id, command.params as UngroupElementParams);
+        result = await handleUngroupElement(command.id, command.params as UngroupElementParams); break;
       case 'moveElements':
-        return await handleMoveElements(command.id, command.params as MoveElementsParams);
+        result = await handleMoveElements(command.id, command.params as MoveElementsParams); break;
       case 'resizeElements':
-        return await handleResizeElements(command.id, command.params as ResizeElementsParams);
+        result = await handleResizeElements(command.id, command.params as ResizeElementsParams); break;
       case 'readScene':
-        return await handleReadScene(command.id);
+        result = await handleReadScene(command.id); break;
       case 'loadScene':
-        return await handleLoadScene(command.id, command.params as LoadSceneParams);
+        result = await handleLoadScene(command.id, command.params as LoadSceneParams); break;
       case 'saveScene':
-        return await handleSaveScene(command.id);
+        result = await handleSaveScene(command.id); break;
       case 'exportImage':
-        return await handleExportImage(command.id, command.params as ExportImageParams);
+        result = await handleExportImage(command.id, command.params as ExportImageParams); break;
       case 'clearCanvas':
-        return await handleClearCanvas(command.id);
+        result = await handleClearCanvas(command.id); break;
       default:
-        return { type: 'error', id: command.id, success: false, error: `Unknown command: ${command.type}` };
+        result = { type: 'error', id: command.id, success: false, error: `Unknown command: ${command.type}` }; break;
     }
+
+    // Post-processing: scroll to newly added element if animated flag is set
+    const params = command.params as { animated?: boolean } | undefined;
+    const resultObj = result as { success?: boolean; elementId?: string } | undefined;
+    if (params?.animated && resultObj?.success && resultObj?.elementId) {
+      const api = excalidrawAPIRef.current;
+      if (api) {
+        const element = api.getSceneElements().find(el => el.id === resultObj.elementId);
+        if (element) {
+          const appState = api.getAppState() as {
+            scrollX: number; scrollY: number;
+            zoom: { value: number };
+            width: number; height: number;
+          };
+          const zoom = appState.zoom.value;
+
+          const elScreenW = (element.width || 0) * zoom;
+          const elScreenH = (element.height || 0) * zoom;
+          const minScreenSize = 60;
+          const isTooSmall = elScreenW < minScreenSize && elScreenH < minScreenSize;
+          const isTooLarge = elScreenW > appState.width * 0.9 || elScreenH > appState.height * 0.9;
+
+          if (isTooSmall || isTooLarge) {
+            // Zoom to fit: zoom in for small, zoom out for large
+            api.scrollToContent(element, {
+              fitToViewport: true,
+              viewportZoomFactor: 0.7,
+              animate: true,
+              duration: 300,
+              maxZoom: 1,
+            });
+          } else {
+            const padding = 80 / zoom;
+
+            const vpLeft = -appState.scrollX;
+            const vpTop = -appState.scrollY;
+            const vpRight = vpLeft + appState.width / zoom;
+            const vpBottom = vpTop + appState.height / zoom;
+
+            const elLeft = element.x;
+            const elTop = element.y;
+            const elRight = elLeft + (element.width || 0);
+            const elBottom = elTop + (element.height || 0);
+
+            const isVisible =
+              elLeft >= vpLeft + padding &&
+              elRight <= vpRight - padding &&
+              elTop >= vpTop + padding &&
+              elBottom <= vpBottom - padding;
+
+            if (!isVisible) {
+              let newScrollX = appState.scrollX;
+              let newScrollY = appState.scrollY;
+
+              if (elLeft < vpLeft + padding) {
+                newScrollX = -(elLeft - padding);
+              } else if (elRight > vpRight - padding) {
+                newScrollX = -(elRight + padding) + appState.width / zoom;
+              }
+
+              if (elTop < vpTop + padding) {
+                newScrollY = -(elTop - padding);
+              } else if (elBottom > vpBottom - padding) {
+                newScrollY = -(elBottom + padding) + appState.height / zoom;
+              }
+
+              api.updateScene({ appState: { scrollX: newScrollX, scrollY: newScrollY } });
+            }
+          }
+        }
+      }
+    }
+
+    return result;
   }, [
     handleListCanvases, handleCreateCanvas, handleSwitchCanvas, handleRenameCanvas,
     handleAddShape, handleAddText, handleAddLine, handleAddArrow, handleAddPolygon, handleAddImage,

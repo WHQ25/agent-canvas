@@ -10,6 +10,7 @@ export interface AddLineOptions {
   strokeWidth?: number;
   strokeStyle?: 'solid' | 'dashed' | 'dotted';
   note?: string;
+  animated?: boolean;
 }
 
 // Minimal client interface for dependency injection (only methods we need)
@@ -47,6 +48,7 @@ export async function addLine(options: AddLineOptions, deps: AddLineDeps = defau
     strokeWidth: options.strokeWidth,
     strokeStyle: options.strokeStyle,
     customData: options.note ? { note: options.note } : undefined,
+    animated: options.animated,
   };
 
   const result = await client.send<AddLineResponse>({

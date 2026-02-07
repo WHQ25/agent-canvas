@@ -14,6 +14,7 @@ export interface AddArrowOptions {
   arrowType?: 'sharp' | 'round' | 'elbow';
   via?: string;
   note?: string;
+  animated?: boolean;
 }
 
 // Minimal client interface for dependency injection (only methods we need)
@@ -70,6 +71,7 @@ export async function addArrow(options: AddArrowOptions, deps: AddArrowDeps = de
     arrowType: options.arrowType,
     midpoints,
     customData: options.note ? { note: options.note } : undefined,
+    animated: options.animated,
   };
 
   const result = await client.send<AddArrowResponse>({

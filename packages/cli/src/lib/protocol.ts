@@ -111,6 +111,7 @@ export interface AddShapeParams {
     strokeColor?: string;
   };
   customData?: Record<string, unknown>;
+  animated?: boolean;
 }
 
 export interface AddShapeResponse {
@@ -141,6 +142,7 @@ export interface AddTextParams {
   anchor?: TextAnchor;  // defaults to 'bottomLeft'
   strokeColor?: string;
   customData?: Record<string, unknown>;
+  animated?: boolean;
 }
 
 export interface AddTextResponse {
@@ -168,6 +170,7 @@ export interface AddLineParams {
   strokeWidth?: number;
   strokeStyle?: 'solid' | 'dashed' | 'dotted';
   customData?: Record<string, unknown>;
+  animated?: boolean;
 }
 
 export interface AddLineResponse {
@@ -198,6 +201,7 @@ export interface AddArrowParams {
   // - For elbow arrows: multiple points for 90-degree turns
   midpoints?: Array<{ x: number; y: number }>;
   customData?: Record<string, unknown>;
+  animated?: boolean;
 }
 
 export interface AddArrowResponse {
@@ -220,6 +224,7 @@ export interface AddPolygonParams {
   strokeStyle?: 'solid' | 'dashed' | 'dotted';
   fillStyle?: 'hachure' | 'cross-hatch' | 'solid' | 'zigzag';
   customData?: Record<string, unknown>;
+  animated?: boolean;
 }
 
 export interface AddPolygonResponse {

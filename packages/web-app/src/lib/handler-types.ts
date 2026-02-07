@@ -66,6 +66,7 @@ export interface ExcalidrawAPI {
     captureUpdate?: 'IMMEDIATELY' | 'EVENTUALLY' | 'NEVER';
   }) => void;
   addFiles: (files: BinaryFileData[]) => void;
+  scrollToContent: (target?: unknown, opts?: { fitToViewport?: boolean; viewportZoomFactor?: number; animate?: boolean; duration?: number; maxZoom?: number }) => void;
 }
 
 /**

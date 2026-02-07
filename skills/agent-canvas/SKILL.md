@@ -5,7 +5,7 @@ allowed-tools: Bash(agent-canvas:*)
 license: MIT
 metadata:
   author: WHQ25
-  version: "0.10.0"
+  version: "0.11.0"
   repository: https://github.com/WHQ25/agent-canvas
 ---
 
@@ -23,16 +23,16 @@ which agent-canvas && agent-canvas --version
 
 - **If not installed**: Ask the user which package manager they prefer (bun or npm), then install:
   ```bash
-  bun add -g @agent-canvas/cli@0.10.0
+  bun add -g @agent-canvas/cli@0.11.0
   # or
-  npm install -g @agent-canvas/cli@0.10.0
+  npm install -g @agent-canvas/cli@0.11.0
   ```
 
-- **If installed but version differs from 0.10.0**: Upgrade using the same package manager:
-  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.10.0`
-  - Otherwise → `npm install -g @agent-canvas/cli@0.10.0`
+- **If installed but version differs from 0.11.0**: Upgrade using the same package manager:
+  - Path contains `.bun` → `bun add -g @agent-canvas/cli@0.11.0`
+  - Otherwise → `npm install -g @agent-canvas/cli@0.11.0`
 
-- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.10.0
+- **After install/upgrade**: Verify with `agent-canvas --version` to confirm version is 0.11.0
 
 ## Quick Start
 
@@ -99,6 +99,7 @@ All drawing commands share common style options:
 - **Stroke**: `--stroke-color <hex>` (default: #1e1e1e), `--stroke-width <1-4>` (default: 2), `--stroke-style <solid|dashed|dotted>` (default: solid)
 - **Fill** (shapes only): `--background-color <hex>` (default: transparent), `--fill-style <solid|hachure|cross-hatch>` (default: solid)
 - **Meta**: `-n/--note <text>` - semantic description for the element. **Use liberally** - notes help understand diagram intent when reading back later.
+- **Animated**: `--animated` - auto-scroll viewport to show the newly added element. Small elements zoom in, large elements zoom out, normal elements scroll minimally.
 
 **Recommended Colors** (from Excalidraw palette):
 | Color  | Stroke (dark) | Background (light) |

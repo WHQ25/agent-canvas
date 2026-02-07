@@ -16,6 +16,7 @@ export interface AddShapeOptions {
   labelFontSize?: number;
   labelStrokeColor?: string;
   note?: string;
+  animated?: boolean;
 }
 
 // Minimal client interface for dependency injection (only methods we need)
@@ -56,6 +57,7 @@ export async function addShape(options: AddShapeOptions, deps: AddShapeDeps = de
     strokeStyle: options.strokeStyle,
     fillStyle: options.fillStyle,
     customData: options.note ? { note: options.note } : undefined,
+    animated: options.animated,
   };
 
   if (options.label) {
