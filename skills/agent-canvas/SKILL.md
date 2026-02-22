@@ -38,7 +38,7 @@ which agent-canvas && agent-canvas --version
 
 1. Start the canvas (opens in browser):
    ```bash
-   agent-canvas start
+   agent-canvas start & 
    ```
 
 2. Use CLI commands to draw on the canvas.
@@ -47,7 +47,7 @@ which agent-canvas && agent-canvas --version
 
 ### Start Canvas
 ```bash
-agent-canvas start                    # Start server and open browser
+agent-canvas start &                  # Start server in the background (will close automatically when no action for a while)
 ```
 
 ### Load File
@@ -70,6 +70,7 @@ agent-canvas rename "New Name"        # Rename current canvas
 - Canvas names are case-insensitive and must be unique
 - Delete canvases via UI (hover over canvas in sidebar, click "..." menu)
 - Each canvas has its own scene data; switching automatically saves current canvas
+
 
 ### Add Text
 ```bash
@@ -248,9 +249,10 @@ groups[N]{id,elementIds}                             # element groupings
 ```bash
 agent-canvas save file.excalidraw
 agent-canvas export -o out.png [--scale 2] [--dark] [--no-background]
-agent-canvas clear                # Clear all elements from the canvas
+agent-canvas clear                # Clear all elements from the canvas, use with caution!
 ```
 **Note**: Before running `clear`, ask the user if they want to save or export the current canvas first.
+⚠️ALWAYS prefer `agent-canvas new` over `agent-canvas clear` only use `clear` when user has confirmed!⚠️
 
 ## Design Philosophy
 
