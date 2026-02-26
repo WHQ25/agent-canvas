@@ -41,6 +41,8 @@ export interface ListCanvasesResponse {
   activeCanvasId?: string;        // User's active canvas
   agentActiveCanvasId?: string;   // Agent's active canvas
   canvases?: CanvasMetadata[];
+  categories?: CanvasCategory[];
+  canvasCategoryMap?: Record<string, string>;
   error?: string;
 }
 
@@ -612,6 +614,71 @@ export interface ExportImageResponse {
 }
 
 // ============================================================================
+// Create Folder
+// ============================================================================
+
+export interface CreateFolderParams {
+  name: string;
+}
+
+export interface CreateFolderRequest {
+  type: 'createFolder';
+  id: string;
+  params: CreateFolderParams;
+}
+
+export interface CreateFolderResponse {
+  type: 'createFolderResult';
+  id: string;
+  success: boolean;
+  category?: CanvasCategory;
+  error?: string;
+}
+
+// ============================================================================
+// Delete Folder
+// ============================================================================
+
+export interface DeleteFolderParams {
+  name: string;
+}
+
+export interface DeleteFolderRequest {
+  type: 'deleteFolder';
+  id: string;
+  params: DeleteFolderParams;
+}
+
+export interface DeleteFolderResponse {
+  type: 'deleteFolderResult';
+  id: string;
+  success: boolean;
+  error?: string;
+}
+
+// ============================================================================
+// Move Canvas to Folder
+// ============================================================================
+
+export interface MoveCanvasToFolderParams {
+  canvasName: string;
+  folderName: string | null;
+}
+
+export interface MoveCanvasToFolderRequest {
+  type: 'moveCanvasToFolder';
+  id: string;
+  params: MoveCanvasToFolderParams;
+}
+
+export interface MoveCanvasToFolderResponse {
+  type: 'moveCanvasToFolderResult';
+  id: string;
+  success: boolean;
+  error?: string;
+}
+
+// ============================================================================
 // Message Types
 // ============================================================================
 
@@ -636,7 +703,10 @@ export type RequestMessage =
   | ReadSceneRequest
   | LoadSceneRequest
   | SaveSceneRequest
-  | ExportImageRequest;
+  | ExportImageRequest
+  | CreateFolderRequest
+  | DeleteFolderRequest
+  | MoveCanvasToFolderRequest;
 
 export type ResponseMessage =
   | PongMessage
@@ -659,7 +729,10 @@ export type ResponseMessage =
   | ReadSceneResponse
   | LoadSceneResponse
   | SaveSceneResponse
-  | ExportImageResponse;
+  | ExportImageResponse
+  | CreateFolderResponse
+  | DeleteFolderResponse
+  | MoveCanvasToFolderResponse;
 
 export type Message = RequestMessage | ResponseMessage;
 
@@ -685,6 +758,9 @@ const MESSAGE_TYPES = [
   'loadScene', 'loadSceneResult',
   'saveScene', 'saveSceneResult',
   'exportImage', 'exportImageResult',
+  'createFolder', 'createFolderResult',
+  'deleteFolder', 'deleteFolderResult',
+  'moveCanvasToFolder', 'moveCanvasToFolderResult',
 ] as const;
 
 export function isMessage(data: unknown): data is Message {

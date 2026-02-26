@@ -36,6 +36,8 @@ export interface ListCanvasesResponse {
   activeCanvasId?: string;        // User's active canvas
   agentActiveCanvasId?: string;   // Agent's active canvas
   canvases?: CanvasMetadata[];
+  categories?: CanvasCategory[];
+  canvasCategoryMap?: Record<string, string>;
   error?: string;
 }
 
@@ -464,6 +466,53 @@ export interface ExportImageResponse {
 
 export interface ClearCanvasResponse {
   type: 'clearCanvasResult';
+  id: string;
+  success: boolean;
+  error?: string;
+}
+
+// ============================================================================
+// Create Folder
+// ============================================================================
+
+export interface CreateFolderParams {
+  name: string;
+}
+
+export interface CreateFolderResponse {
+  type: 'createFolderResult';
+  id: string;
+  success: boolean;
+  category?: CanvasCategory;
+  error?: string;
+}
+
+// ============================================================================
+// Delete Folder
+// ============================================================================
+
+export interface DeleteFolderParams {
+  name: string;
+}
+
+export interface DeleteFolderResponse {
+  type: 'deleteFolderResult';
+  id: string;
+  success: boolean;
+  error?: string;
+}
+
+// ============================================================================
+// Move Canvas to Folder
+// ============================================================================
+
+export interface MoveCanvasToFolderParams {
+  canvasName: string;
+  folderName: string | null;
+}
+
+export interface MoveCanvasToFolderResponse {
+  type: 'moveCanvasToFolderResult';
   id: string;
   success: boolean;
   error?: string;

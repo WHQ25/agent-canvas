@@ -21,13 +21,16 @@ import { list, defaultDeps as listDeps } from './commands/list.js';
 import { newCanvas, defaultDeps as newCanvasDeps } from './commands/new-canvas.js';
 import { useCanvas, defaultDeps as useCanvasDeps } from './commands/use-canvas.js';
 import { renameCanvas, defaultDeps as renameCanvasDeps } from './commands/rename-canvas.js';
+import { createFolder, defaultDeps as createFolderDeps } from './commands/create-folder.js';
+import { deleteFolder, defaultDeps as deleteFolderDeps } from './commands/delete-folder.js';
+import { moveToFolder, defaultDeps as moveToFolderDeps } from './commands/move-to-folder.js';
 
 const program = new Command();
 
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.11.0');
+  .version('0.12.0');
 
 program
   .command('start')
@@ -412,6 +415,48 @@ program
   .argument('<name>', 'New name for the canvas')
   .action(async (name: string) => {
     await renameCanvas({ newName: name }, renameCanvasDeps);
+  });
+
+// ============================================================================
+// Create Folder
+// ============================================================================
+program
+  .command('create-folder')
+  .description('Create a new folder for organizing canvases')
+  .requiredOption('-n, --name <name>', 'Folder name')
+  .action(async (options) => {
+    await createFolder({ name: options.name }, createFolderDeps);
+  });
+
+// ============================================================================
+// Delete Folder
+// ============================================================================
+program
+  .command('delete-folder')
+  .description('Delete a folder (canvases in it become ungrouped)')
+  .argument('<name>', 'Folder name to delete')
+  .action(async (name: string) => {
+    await deleteFolder({ name }, deleteFolderDeps);
+  });
+
+// ============================================================================
+// Move to Folder
+// ============================================================================
+program
+  .command('move-to-folder')
+  .description('Move a canvas to a folder, or to ungrouped')
+  .argument('<canvas-name>', 'Canvas name to move')
+  .argument('[folder-name]', 'Target folder name (omit with --ungrouped to remove from folder)')
+  .option('--ungrouped', 'Move canvas out of its folder to ungrouped')
+  .action(async (canvasName: string, folderName: string | undefined, options) => {
+    if (options.ungrouped) {
+      await moveToFolder({ canvasName, folderName: null }, moveToFolderDeps);
+    } else if (folderName) {
+      await moveToFolder({ canvasName, folderName }, moveToFolderDeps);
+    } else {
+      console.error('Error: provide a folder name or use --ungrouped');
+      process.exit(1);
+    }
   });
 
 program.parse();

@@ -21,6 +21,9 @@ import type {
   CreateCanvasParams,
   SwitchCanvasParams,
   RenameCanvasParams,
+  CreateFolderParams,
+  DeleteFolderParams,
+  MoveCanvasToFolderParams,
 } from './protocol';
 
 import type { HandlerDeps, HandlerContext } from './lib/handler-types';
@@ -338,6 +341,8 @@ export default function App() {
       activeCanvasId: state.activeCanvasId,
       agentActiveCanvasId: agentActiveCanvasIdRef.current,
       canvases: state.canvases,
+      categories: state.categories,
+      canvasCategoryMap: state.canvasCategoryMap,
     };
   }, []);
 
@@ -431,6 +436,59 @@ export default function App() {
     }
 
     return { type: 'renameCanvasResult', id, success: true, canvas: renamedCanvas };
+  }, []);
+
+  // Handler: Create folder
+  const handleCreateFolder = useCallback((id: string, params: CreateFolderParams) => {
+    const state = canvasListStateRef.current;
+    const name = params.name.trim();
+    if (!name) {
+      return { type: 'createFolderResult', id, success: false, error: 'Folder name cannot be empty' };
+    }
+    const existing = (state.categories || []).find(c => c.name === name);
+    if (existing) {
+      return { type: 'createFolderResult', id, success: false, error: `Folder "${name}" already exists` };
+    }
+    const updatedState = createCategory(state, name);
+    setCanvasListState(updatedState);
+    saveCanvasList(updatedState);
+    const newCategory = (updatedState.categories || []).find(c => c.name === name);
+    return { type: 'createFolderResult', id, success: true, category: newCategory };
+  }, []);
+
+  // Handler: Delete folder
+  const handleDeleteFolder = useCallback((id: string, params: DeleteFolderParams) => {
+    const state = canvasListStateRef.current;
+    const name = params.name.trim();
+    const category = (state.categories || []).find(c => c.name === name);
+    if (!category) {
+      return { type: 'deleteFolderResult', id, success: false, error: `Folder "${name}" not found` };
+    }
+    const updatedState = deleteCategory(state, category.id);
+    setCanvasListState(updatedState);
+    saveCanvasList(updatedState);
+    return { type: 'deleteFolderResult', id, success: true };
+  }, []);
+
+  // Handler: Move canvas to folder
+  const handleMoveCanvasToFolder = useCallback((id: string, params: MoveCanvasToFolderParams) => {
+    const state = canvasListStateRef.current;
+    const canvas = state.canvases.find(c => c.name === params.canvasName);
+    if (!canvas) {
+      return { type: 'moveCanvasToFolderResult', id, success: false, error: `Canvas "${params.canvasName}" not found` };
+    }
+    let categoryId: string | null = null;
+    if (params.folderName !== null) {
+      const category = (state.categories || []).find(c => c.name === params.folderName);
+      if (!category) {
+        return { type: 'moveCanvasToFolderResult', id, success: false, error: `Folder "${params.folderName}" not found` };
+      }
+      categoryId = category.id;
+    }
+    const updatedState = moveCanvasToCategory(state, canvas.id, categoryId);
+    setCanvasListState(updatedState);
+    saveCanvasList(updatedState);
+    return { type: 'moveCanvasToFolderResult', id, success: true };
   }, []);
 
   // UI handler: Select canvas from sidebar
@@ -830,6 +888,12 @@ export default function App() {
         result = await handleExportImage(command.id, command.params as ExportImageParams); break;
       case 'clearCanvas':
         result = await handleClearCanvas(command.id); break;
+      case 'createFolder':
+        result = handleCreateFolder(command.id, command.params as CreateFolderParams); break;
+      case 'deleteFolder':
+        result = handleDeleteFolder(command.id, command.params as DeleteFolderParams); break;
+      case 'moveCanvasToFolder':
+        result = handleMoveCanvasToFolder(command.id, command.params as MoveCanvasToFolderParams); break;
       default:
         result = { type: 'error', id: command.id, success: false, error: `Unknown command: ${command.type}` }; break;
     }
@@ -909,6 +973,7 @@ export default function App() {
     return result;
   }, [
     handleListCanvases, handleCreateCanvas, handleSwitchCanvas, handleRenameCanvas,
+    handleCreateFolder, handleDeleteFolder, handleMoveCanvasToFolder,
     handleAddShape, handleAddText, handleAddLine, handleAddArrow, handleAddPolygon, handleAddImage,
     handleDeleteElements, handleRotateElements, handleGroupElements, handleUngroupElement,
     handleMoveElements, handleResizeElements, handleReadScene, handleLoadScene, handleSaveScene,
