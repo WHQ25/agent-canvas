@@ -76,7 +76,8 @@ import { collectUsedFiles } from './lib/file-utils';
 
 import { CanvasSidebar } from './components/CanvasSidebar';
 
-const WS_PORT = import.meta.env.VITE_WS_PORT ? parseInt(import.meta.env.VITE_WS_PORT, 10) : 7890;
+const WS_PORT = (window as unknown as Record<string, unknown>).__WS_PORT__ as number
+  ?? (import.meta.env.VITE_WS_PORT ? parseInt(import.meta.env.VITE_WS_PORT, 10) : 39820);
 
 interface BoundElementRef {
   id: string;

@@ -1,4 +1,6 @@
-export const WS_PORT = parseInt(process.env.AGENT_CANVAS_WS_PORT || '7890', 10);
+import { getWsPort } from './config.js';
+
+export const WS_PORT = getWsPort();
 
 // ============================================================================
 // Canvas Metadata

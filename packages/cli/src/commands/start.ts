@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { startServer, isBrowserServerRunning, isBrowserConnected } from '../server/index.js';
+import { getHttpPort } from '../lib/config.js';
 
 const execAsync = promisify(exec);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -36,18 +37,22 @@ function findWebAppDir(): string {
   throw new Error('web-app package not found. --dev mode must be run from the source repository.');
 }
 
-export async function start(options?: { dev?: boolean }): Promise<void> {
+export async function start(options?: { dev?: boolean; port?: number; httpPort?: number }): Promise<void> {
+  if (options?.port) {
+    process.env.AGENT_CANVAS_WS_PORT = String(options.port);
+  }
+  if (options?.httpPort) {
+    process.env.AGENT_CANVAS_HTTP_PORT = String(options.httpPort);
+  }
+
   if (options?.dev) {
-    // Set dev port defaults
     if (!process.env.AGENT_CANVAS_WS_PORT) {
       process.env.AGENT_CANVAS_WS_PORT = '7900';
     }
 
-    // Start WS-only server
     console.log('Starting dev mode...');
     await startServer({ wsOnly: true });
 
-    // Start Vite dev server
     const webAppDir = findWebAppDir();
     const viteProcess = spawn('npx', ['vite', '--host'], {
       cwd: webAppDir,
@@ -103,12 +108,11 @@ export async function start(options?: { dev?: boolean }): Promise<void> {
   // Give existing browser tabs a moment to reconnect (browser reconnects every 1s)
   await new Promise((r) => setTimeout(r, 1500));
 
+  const httpPort = getHttpPort();
   const browserConnected = await isBrowserConnected();
   if (browserConnected) {
-    const httpPort = process.env.AGENT_CANVAS_HTTP_PORT || '7891';
     console.log(`Canvas already running at http://localhost:${httpPort}`);
   } else {
-    const httpPort = process.env.AGENT_CANVAS_HTTP_PORT || '7891';
     console.log('Opening browser...');
     await openBrowser(`http://localhost:${httpPort}`);
   }

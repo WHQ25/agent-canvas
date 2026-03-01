@@ -1,4 +1,4 @@
-export const WS_PORT = 7890;
+export const WS_PORT = 39820;
 
 // ============================================================================
 // Canvas Metadata

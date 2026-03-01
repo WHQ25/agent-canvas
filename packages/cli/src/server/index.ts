@@ -5,10 +5,11 @@ import { join, extname } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { WS_PORT } from '../lib/protocol.js';
+import { getHttpPort } from '../lib/config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const HTTP_PORT = parseInt(process.env.AGENT_CANVAS_HTTP_PORT || '7891', 10);
+const HTTP_PORT = getHttpPort();
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html',
@@ -63,13 +64,18 @@ export function startServer(options?: { wsOnly?: boolean }): Promise<{ httpUrl: 
       console.log(`Serving static files from: ${staticDir}`);
 
       // HTTP Server for static files
+      const serveHtml = (fullPath: string, res: import('http').ServerResponse) => {
+        let html = readFileSync(fullPath, 'utf-8');
+        html = html.replace('</head>', `<script>window.__WS_PORT__=${WS_PORT}</script></head>`);
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      };
+
       httpServer = createServer((req, res) => {
         let filePath = req.url || '/';
 
-        // Remove query string
         filePath = filePath.split('?')[0];
 
-        // Default to index.html
         if (filePath === '/') {
           filePath = '/index.html';
         }
@@ -78,17 +84,18 @@ export function startServer(options?: { wsOnly?: boolean }): Promise<{ httpUrl: 
 
         if (existsSync(fullPath)) {
           const ext = extname(fullPath);
-          const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-          const content = readFileSync(fullPath);
-          res.writeHead(200, { 'Content-Type': contentType });
-          res.end(content);
+          if (ext === '.html') {
+            serveHtml(fullPath, res);
+          } else {
+            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+            const content = readFileSync(fullPath);
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(content);
+          }
         } else {
-          // For SPA, fallback to index.html for non-asset paths
           const indexPath = join(staticDir, 'index.html');
           if (existsSync(indexPath) && !filePath.includes('.')) {
-            const content = readFileSync(indexPath);
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(content);
+            serveHtml(indexPath, res);
           } else {
             res.writeHead(404);
             res.end('Not Found');

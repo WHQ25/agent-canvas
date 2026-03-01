@@ -24,20 +24,23 @@ import { renameCanvas, defaultDeps as renameCanvasDeps } from './commands/rename
 import { createFolder, defaultDeps as createFolderDeps } from './commands/create-folder.js';
 import { deleteFolder, defaultDeps as deleteFolderDeps } from './commands/delete-folder.js';
 import { moveToFolder, defaultDeps as moveToFolderDeps } from './commands/move-to-folder.js';
+import { configSet, configGet, configList, configReset } from './commands/config.js';
 
 const program = new Command();
 
 program
   .name('agent-canvas')
   .description('CLI for Agent Canvas - Excalidraw interface for AI agents')
-  .version('0.12.0');
+  .version('0.13.0');
 
 program
   .command('start')
   .description('Start the canvas server and open in browser')
   .option('--dev', 'Development mode: use Vite dev server with HMR')
+  .option('--port <number>', 'WebSocket port', parseInt)
+  .option('--http-port <number>', 'HTTP port for web UI', parseInt)
   .action(async (options) => {
-    await start({ dev: options.dev });
+    await start({ dev: options.dev, port: options.port, httpPort: options.httpPort });
   });
 
 program
@@ -457,6 +460,45 @@ program
       console.error('Error: provide a folder name or use --ungrouped');
       process.exit(1);
     }
+  });
+
+// ============================================================================
+// Config
+// ============================================================================
+const configCmd = program
+  .command('config')
+  .description('Manage CLI configuration');
+
+configCmd
+  .command('set')
+  .description('Set a config value')
+  .argument('<key>', 'Config key (port, http-port)')
+  .argument('<value>', 'Value to set')
+  .action((key: string, value: string) => {
+    configSet(key, value);
+  });
+
+configCmd
+  .command('get')
+  .description('Get a config value')
+  .argument('<key>', 'Config key (port, http-port)')
+  .action((key: string) => {
+    configGet(key);
+  });
+
+configCmd
+  .command('list')
+  .description('List all config values')
+  .action(() => {
+    configList();
+  });
+
+configCmd
+  .command('reset')
+  .description('Reset a config value to default')
+  .argument('<key>', 'Config key (port, http-port)')
+  .action((key: string) => {
+    configReset(key);
   });
 
 program.parse();
